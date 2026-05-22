@@ -1,7 +1,8 @@
 .PHONY: smoke train-mac train-4b train-8b sft dpo-final gen-data infer setup-mac setup-dgx test lint \
         sft-rtx12g-4b dpo-rtx12g-4b pipeline-rtx12g-4b \
         docker-build sft-docker dpo-docker pipeline-docker infer-docker docker-shell \
-        serve-build serve-docker serve-stop email-pipeline email-extract
+        serve-build serve-docker serve-stop email-pipeline email-extract \
+        validate validate-and-pipeline
 
 smoke:
 	bash scripts/smoke.sh
@@ -165,3 +166,20 @@ email-extract:
 	  --email-dir $(EMAIL_DIR) \
 	  --persona "$(PERSONA)" \
 	  --extract-only
+
+# ── 교차 검증 ─────────────────────────────────────────────────────────────────
+JUDGE_MODEL   ?= gpt-5.5
+RESULT_FILE   ?= outputs/schedule_result.json
+
+# 기존 결과 파일을 판사 모델로 검증
+# 사용: make validate [RESULT_FILE=...] [JUDGE_MODEL=gpt-5.5]
+validate:
+	uv run python scripts/validate_schedule.py \
+	  --result $(RESULT_FILE) \
+	  --email-dir $(EMAIL_DIR) \
+	  --judge $(JUDGE_MODEL) \
+	  --out outputs/validation_result.json
+
+# 파이프라인 실행 후 즉시 검증 (순차)
+# 사용: make validate-and-pipeline EMAIL_DIR=data/sample_emails
+validate-and-pipeline: email-pipeline validate
