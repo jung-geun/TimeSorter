@@ -1,6 +1,5 @@
 .venv/
 .git/
-outputs/
 wandb/
 logs/
 data/*.parquet

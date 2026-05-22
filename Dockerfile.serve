@@ -1,0 +1,29 @@
+FROM vllm/vllm-openai:v0.8.5
+
+# 어댑터와 configs만 복사 (모델 가중치는 HF 캐시 마운트로 처리)
+WORKDIR /workspace
+COPY outputs/ ./outputs/
+COPY configs/ ./configs/
+
+EXPOSE 8000
+
+# 기본 실행: LoRA 어댑터를 붙인 Qwen3-4B-Instruct 서빙
+# 환경변수로 오버라이드 가능
+ENV MODEL_NAME="Qwen/Qwen3-4B-Instruct-2507" \
+    LORA_PATH="outputs/dpo_rtx12g_4b" \
+    LORA_NAME="scheduler" \
+    MAX_MODEL_LEN="2048" \
+    GPU_MEM_UTIL="0.85" \
+    PORT="8000"
+
+CMD python -m vllm.entrypoints.openai.api_server \
+    --model $MODEL_NAME \
+    --enable-lora \
+    --lora-modules ${LORA_NAME}=${LORA_PATH} \
+    --dtype bfloat16 \
+    --max-model-len $MAX_MODEL_LEN \
+    --gpu-memory-utilization $GPU_MEM_UTIL \
+    --max-lora-rank 16 \
+    --host 0.0.0.0 \
+    --port $PORT \
+    --served-model-name $LORA_NAME

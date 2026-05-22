@@ -1,0 +1,20 @@
+From: 개발팀 CI <ci-bot@company.co.kr>
+To: 김민지 <minji.kim@company.co.kr>
+Date: 2026-05-23 09:50
+Subject: [ACTION REQUIRED] PR #847 코드 리뷰 대기 중 (48시간 내 처리)
+
+안녕하세요,
+
+PR #847 (결제 모듈 리팩터링)이 48시간 이상 리뷰 대기 중입니다.
+리뷰어로 지정되어 있으니 확인 부탁드립니다.
+
+PR 제목: 결제 모듈 비동기 처리 개선 (async/await 전환)
+작성자: 장서연 (seoyeon.jang)
+변경 파일: 12개 / +340줄 / -180줄
+마감 권고: 5/24 오전까지
+
+리뷰 링크: https://github.com/company/backend/pull/847
+
+놓친 경우 팀장에게 자동 에스컬레이션됩니다.
+
+감사합니다.

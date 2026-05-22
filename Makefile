@@ -1,6 +1,7 @@
 .PHONY: smoke train-mac train-4b train-8b sft dpo-final gen-data infer setup-mac setup-dgx test lint \
         sft-rtx12g-4b dpo-rtx12g-4b pipeline-rtx12g-4b \
-        docker-build sft-docker dpo-docker pipeline-docker infer-docker docker-shell
+        docker-build sft-docker dpo-docker pipeline-docker infer-docker docker-shell \
+        serve-build serve-docker serve-stop email-pipeline email-extract
 
 smoke:
 	bash scripts/smoke.sh
@@ -114,3 +115,53 @@ docker-shell:
 	-v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
 	--env-file .env \
 	$(DOCKER_IMAGE) bash
+
+# ── vLLM 서빙 ────────────────────────────────────────────────────────────────
+SERVE_IMAGE   ?= timesorter-serve:latest
+ADAPTER       ?= outputs/dpo_rtx12g_4b
+LORA_NAME     ?= scheduler
+SERVE_PORT    ?= 8000
+GPU_MEM_UTIL  ?= 0.85
+EMAIL_DIR     ?= data/sample_emails
+PERSONA       ?= 직장인
+
+# vLLM 서빙 이미지 빌드 (Dockerfile.serve 사용)
+serve-build:
+	docker build -f Dockerfile.serve -t $(SERVE_IMAGE) .
+
+# vLLM 서버 기동 (백그라운드 데몬, GPU 점유)
+# 중지: make serve-stop  또는  docker stop timesorter-serve
+serve-docker:
+	docker run -d --name timesorter-serve --rm --gpus all \
+	  -v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
+	  -v $(PWD)/outputs:/workspace/outputs \
+	  -p $(SERVE_PORT):8000 \
+	  -e LORA_PATH=$(ADAPTER) \
+	  -e LORA_NAME=$(LORA_NAME) \
+	  -e GPU_MEM_UTIL=$(GPU_MEM_UTIL) \
+	  $(SERVE_IMAGE)
+	@echo ""
+	@echo "[서버 기동] 로드까지 약 30~60초 소요됩니다."
+	@echo "  헬스체크: curl http://localhost:$(SERVE_PORT)/health"
+	@echo "  모델목록: curl http://localhost:$(SERVE_PORT)/v1/models"
+	@echo "  중지:     make serve-stop"
+
+serve-stop:
+	docker stop timesorter-serve 2>/dev/null || true
+
+# 이메일 → 스케줄 파이프라인 (vLLM 서버 필요)
+# 사용: make email-pipeline EMAIL_DIR=data/sample_emails PERSONA=직장인
+email-pipeline:
+	uv run python scripts/email_to_schedule.py \
+	  --email-dir $(EMAIL_DIR) \
+	  --persona "$(PERSONA)" \
+	  --server-url http://localhost:$(SERVE_PORT) \
+	  --model $(LORA_NAME) \
+	  --out outputs/schedule_result.json
+
+# 태스크 추출만 (vLLM 서버 불필요, OpenAI만 사용)
+email-extract:
+	uv run python scripts/email_to_schedule.py \
+	  --email-dir $(EMAIL_DIR) \
+	  --persona "$(PERSONA)" \
+	  --extract-only
