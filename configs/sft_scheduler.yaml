@@ -1,0 +1,28 @@
+# Stage 1 — 스케줄 SFT
+# 데이터: data/scheduler_ko.parquet (gen_korean_schedule.py 산출물)
+#         없으면 ko_Ultrafeedback_binarized에서 scheduling 키워드 자동 필터
+model_name: Qwen/Qwen3-4B-Instruct-2507
+dataset: data/scheduler_ko.parquet
+output_dir: outputs/sft_scheduler
+max_samples: null
+max_seq_length: 2048
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: false  # CUDA x86_64에서 device.py가 자동 활성화 가능
+
+training_args:
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 4
+  num_train_epochs: 2
+  learning_rate: 2.0e-5
+  gradient_checkpointing: false
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_steps: 200
+  save_strategy: "steps"
+  report_to: "wandb"
+  remove_unused_columns: false

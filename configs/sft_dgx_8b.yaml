@@ -1,0 +1,32 @@
+# Stage 1 SFT — DGX Spark (ARM64, 120GB VRAM)
+# 8B 모델 bf16 LoRA. 120GB에서 bs=8 충분 (~58GB 사용 예상)
+model_name: Qwen/Qwen3-8B
+dataset: data/scheduler_ko.parquet
+output_dir: outputs/sft_dgx_8b
+max_samples: null
+max_seq_length: 2048
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: false
+
+training_args:
+  per_device_train_batch_size: 8
+  gradient_accumulation_steps: 4     # effective batch = 32
+  num_train_epochs: 2
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  packing: true
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_steps: 200
+  save_strategy: "steps"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 4
+  optim: "adamw_torch_fused"

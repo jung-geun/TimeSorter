@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "drl"
+version = "0.1.0"
+description = "Qwen3 DPO fine-tuning for Korean preference data"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "torch>=2.5",
+    "transformers>=4.46,<4.60",
+    "trl>=0.12,<0.20",
+    "peft>=0.13",
+    "datasets>=3.0",
+    "accelerate>=1.0",
+    "pyyaml",
+    "huggingface-hub",
+    "wandb>=0.27.0",
+    "python-dotenv>=1.0",
+    "anthropic>=0.28",
+    "openai>=1.30",
+    "pandas>=2.0",
+    "pyarrow>=14.0",
+    "matplotlib>=3.10.9",
+]
+
+[project.optional-dependencies]
+# CUDA x86_64 전용 — DGX(ARM64) 및 Mac에서는 미설치
+quant  = ["bitsandbytes>=0.43"]
+# flash-attn: CUDA 환경에서 설치 시 자동 활성화 (device.py 자동 감지)
+flash  = ["flash-attn>=2.6"]
+# Gemini SDK: GOOGLE_API_KEY 없이 gemini CLI만 쓸 경우 설치 불필요
+gemini = ["google-generativeai>=0.8"]
+dev    = ["pytest>=8.0", "ruff>=0.9"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/drl"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,29 @@
+# DGX Spark (ARM64 + Blackwell) — bf16 LoRA (QLoRA는 ARM64 wheel 부재로 미사용)
+model_name: Qwen/Qwen3-4B-Instruct-2507
+dataset: data/ko_Ultrafeedback_binarized.parquet
+output_dir: outputs/dgx_4b
+max_samples: null
+max_prompt_len: 1024
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: false
+
+training_args:
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 2
+  num_train_epochs: 1
+  max_length: 2048
+  max_prompt_length: 1024
+  beta: 0.1
+  learning_rate: 5.0e-6
+  gradient_checkpointing: false
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_steps: 500
+  save_strategy: "steps"
+  report_to: "wandb"
+  remove_unused_columns: false

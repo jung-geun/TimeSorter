@@ -1,0 +1,20 @@
+.venv/
+outputs/
+wandb/
+*.pt
+*.safetensors
+*.bin
+__pycache__/
+*.pyc
+.env
+*.egg-info/
+dist/
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+.omc/
+
+# 대용량 HF 다운로드 데이터셋 (download_datasets.py / download_nemotron.py로 재생성)
+data/ko_Ultrafeedback_binarized.parquet
+data/nemotron_personas_korea.parquet
+data/orca-dpo-pairs-ko.parquet

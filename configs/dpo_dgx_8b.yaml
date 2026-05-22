@@ -1,0 +1,35 @@
+# Stage 3 DPO — DGX Spark (ARM64, 120GB VRAM), 8B
+# SFT 체크포인트(outputs/sft_dgx_8b)에서 이어 학습
+model_name: Qwen/Qwen3-8B
+sft_adapter: outputs/sft_dgx_8b
+dataset: data/dpo_pairs.parquet
+output_dir: outputs/dpo_dgx_8b
+max_samples: null
+max_prompt_len: 1024
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: false
+
+training_args:
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 8     # effective batch = 32
+  num_train_epochs: 2
+  max_length: 2048
+  max_prompt_length: 1024
+  beta: 0.05                         # 9B급 모델은 beta 낮게 (Notion § 4.2)
+  learning_rate: 5.0e-7
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_steps: 200
+  save_strategy: "steps"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 4
+  optim: "adamw_torch_fused"
