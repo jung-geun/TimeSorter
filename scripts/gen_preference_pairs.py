@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""한국어 스케줄 시나리오에서 4종 후보 생성 + GPT-4o judge로 DPO pair 구축.
+"""한국어 스케줄 시나리오에서 4종 후보 생성 + GPT judge로 DPO pair 구축.
 
 산출물: data/dpo_pairs.parquet  (prompt, chosen, rejected, persona 컬럼)
 
@@ -11,8 +11,8 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
-import time
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -20,14 +20,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _PAIR_COMBOS = [
-    ("c1", "c4"),  # Gemini full vs Claude no-guide
-    ("c2", "c3"),  # Claude full vs Gemini urgency-only
-    ("c1", "c3"),  # Gemini full vs Gemini urgency-only
+    ("c1", "c4"),  # 고품질 vs 저품질
+    ("c2", "c3"),  # 고품질 vs 편향
+    ("c1", "c3"),  # 고품질 vs 편향
 ]
 
 
 def _load_checkpoint(ckpt_path: Path) -> tuple[list[dict], set[int]]:
-    """체크포인트 JSONL 로드. (pairs, done_idx_set) 반환."""
     pairs: list[dict] = []
     done: set[int] = set()
     if not ckpt_path.exists():
@@ -44,16 +43,65 @@ def _load_checkpoint(ckpt_path: Path) -> tuple[list[dict], set[int]]:
     return pairs, done
 
 
-def main() -> None:
+async def process_scenario(
+    idx: int,
+    prompt: str,
+    persona: str,
+    ckpt_f,
+    ckpt_lock: asyncio.Lock,
+) -> list[dict]:
+    from drl.data.augment import async_generate_four_candidates, async_judge_pair
+
+    try:
+        c1, c2, c3, c4 = await async_generate_four_candidates(prompt, persona)
+    except Exception as e:
+        print(f"  [스킵] 시나리오 {idx+1} 후보 생성 실패: {e}")
+        return []
+
+    candidates = {"c1": c1, "c2": c2, "c3": c3, "c4": c4}
+    judge_tasks = [
+        async_judge_pair(prompt, persona, candidates[h], candidates[l])
+        for h, l in _PAIR_COMBOS
+    ]
+    verdicts = await asyncio.gather(*judge_tasks, return_exceptions=True)
+
+    row_pairs: list[dict] = []
+    for (high_key, low_key), verdict in zip(_PAIR_COMBOS, verdicts):
+        if isinstance(verdict, Exception) or verdict == "TIE":
+            continue
+        a, b = candidates[high_key], candidates[low_key]
+        chosen = a if verdict == "A" else b
+        rejected = b if verdict == "A" else a
+        pair = {
+            "prompt": prompt,
+            "chosen": chosen,
+            "rejected": rejected,
+            "persona": persona,
+            "pair": f"{high_key}_vs_{low_key}",
+        }
+        row_pairs.append(pair)
+
+    if row_pairs:
+        async with ckpt_lock:
+            for pair in row_pairs:
+                ckpt_f.write(
+                    json.dumps({**pair, "_seed_idx": idx}, ensure_ascii=False) + "\n"
+                )
+            ckpt_f.flush()
+        print(f"  [완료] 시나리오 {idx+1}: {len(row_pairs)}개 pair 저장")
+
+    return row_pairs
+
+
+async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--in", dest="input", default="data/scheduler_ko.parquet")
     parser.add_argument("--out", default="data/dpo_pairs.parquet")
-    parser.add_argument("--limit", type=int, default=None, help="처리할 시나리오 수 제한")
-    parser.add_argument("--concurrency", type=int, default=4)
+    parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--concurrency", type=int, default=8)
     args = parser.parse_args()
 
     import pandas as pd
-    from drl.data.augment import generate_four_candidates, judge_pair
 
     df = pd.read_parquet(args.input)
     if args.limit:
@@ -63,56 +111,33 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     ckpt_path = out_path.with_suffix(".ckpt.jsonl")
 
-    pairs, done = _load_checkpoint(ckpt_path)
+    all_pairs, done = _load_checkpoint(ckpt_path)
 
+    pending = [(i, row) for i, row in enumerate(df.itertuples()) if i not in done]
+    print(f"[시작] 처리 대상: {len(pending)}개 시나리오 (동시 처리: {args.concurrency})")
+
+    sem = asyncio.Semaphore(args.concurrency)
+
+    async def worker(idx: int, row) -> list[dict]:
+        async with sem:
+            prompt = str(row.prompt)
+            persona = str(getattr(row, "persona", "직장인"))
+            return await process_scenario(idx, prompt, persona, ckpt_f, ckpt_lock)
+
+    ckpt_lock = asyncio.Lock()
     with ckpt_path.open("a") as ckpt_f:
-        for i, row in enumerate(df.itertuples()):
-            if i in done:
-                continue
-            prompt = row.prompt
-            persona = getattr(row, "persona", "직장인")
-            print(f"[{i+1}/{len(df)}] 후보 생성: {prompt[:40]}...")
+        tasks = [worker(i, row) for i, row in pending]
+        results = await asyncio.gather(*tasks)
 
-            try:
-                c1, c2, c3, c4 = generate_four_candidates(prompt, persona)
-            except Exception as e:
-                print(f"  [스킵] 후보 생성 실패: {e}")
-                continue
+    for result in results:
+        all_pairs.extend(result)
 
-            candidates = {"c1": c1, "c2": c2, "c3": c3, "c4": c4}
-            row_new_pairs: list[dict] = []
-
-            for high_key, low_key in _PAIR_COMBOS:
-                a = candidates[high_key]
-                b = candidates[low_key]
-                verdict = judge_pair(prompt, persona, a, b)
-                if verdict == "TIE":
-                    continue
-                chosen = a if verdict == "A" else b
-                rejected = b if verdict == "A" else a
-                pair = {
-                    "prompt": prompt,
-                    "chosen": chosen,
-                    "rejected": rejected,
-                    "persona": persona,
-                    "pair": f"{high_key}_vs_{low_key}",
-                }
-                pairs.append(pair)
-                row_new_pairs.append(pair)
-
-            for pair in row_new_pairs:
-                ckpt_f.write(
-                    json.dumps({**pair, "_seed_idx": i}, ensure_ascii=False) + "\n"
-                )
-            ckpt_f.flush()
-
-            time.sleep(0.5)
-
-    result = pd.DataFrame(pairs)
-    result.to_parquet(args.out, index=False)
-    print(f"[done] {len(result)}개 pair 저장 → {args.out}")
-    print(f"  TIE 제외 후 유효 페어 비율: {len(result)}/{len(df)*len(_PAIR_COMBOS):.0f}")
+    import pandas as pd  # noqa: F811
+    result_df = pd.DataFrame(all_pairs)
+    result_df.to_parquet(str(out_path), index=False)
+    print(f"\n[완료] 총 {len(result_df)}개 pair 저장 → {out_path}")
+    print(f"  TIE 제외 유효 비율: {len(result_df)}/{len(df) * len(_PAIR_COMBOS)}")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main_async())

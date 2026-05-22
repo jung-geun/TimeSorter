@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import subprocess
 import time
@@ -30,16 +31,14 @@ _GEMINI_LITE   = "gemini-3.1-flash-lite"
 
 _MODEL_ALIASES = {
     # Gemini
-    "gemini-3.5-flash": "gemini-2.5-flash",       # 실제 프로덕션 모델로 맵핑
-    "gemini-3.1-pro": "gemini-2.5-flash",         # 실제 프로덕션 모델로 맵핑
+    "gemini-3.5-flash": "gemini-2.5-flash",
+    "gemini-3.1-pro": "gemini-2.5-flash",
     "gemini-3.1-flash-lite": "gemini-1.5-flash",
-    
-    # Claude - CLI와 SDK가 직접 지원하므로 그대로 유지
+    # Claude
     "claude-sonnet-4-6": "claude-sonnet-4-6",
     "claude-opus-4-6": "claude-opus-4-6",
     "claude-haiku-4-5": "claude-haiku-4-5",
-    
-    # OpenAI — gpt-5.5 / gpt-5.4-mini are accessible; gpt-4o-mini is blocked (403)
+    # OpenAI — gpt-4o-mini is blocked (403); use gpt-5.x directly
     "gpt-5.5": "gpt-5.5",
     "gpt-5.4-mini": "gpt-5.4-mini",
 }
@@ -140,6 +139,127 @@ def generate_with_openai(
     return ""
 
 
+async def async_generate_with_openai(
+    scenario: str, persona: str, guide_type: GuideType, model: str = _OPENAI_MINI
+) -> str:
+    """비동기 OpenAI 응답 생성."""
+    from openai import AsyncOpenAI
+    model = _resolve_model(model)
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    prompt = _build_prompt(scenario, persona, guide_type)
+    for attempt in range(3):
+        try:
+            resp = await client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_completion_tokens=2000,
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            if attempt == 2:
+                raise
+            await asyncio.sleep(1.5 ** attempt)
+    return ""
+
+
+async def async_generate_with_claude(
+    scenario: str, persona: str, guide_type: GuideType, model: str = _CLAUDE_SONNET
+) -> str:
+    """비동기 Claude 응답 생성 (인증 실패 시 OpenAI fallback)."""
+    orig_model = model
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        fallback = _OPENAI_HIGH if "sonnet" in orig_model or "opus" in orig_model else _OPENAI_MINI
+        return await async_generate_with_openai(scenario, persona, guide_type, model=fallback)
+
+    model = _resolve_model(model)
+    prompt = _build_prompt(scenario, persona, guide_type)
+    for attempt in range(3):
+        try:
+            import anthropic
+            client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+            msg = await client.messages.create(
+                model=model,
+                max_tokens=2000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return msg.content[0].text.strip()
+        except Exception as e:
+            err_str = str(e)
+            if "401" in err_str or "invalid x-api-key" in err_str or "authentication_error" in err_str:
+                fallback = _OPENAI_HIGH if "sonnet" in orig_model or "opus" in orig_model else _OPENAI_MINI
+                print(f"  [폴백] Anthropic 인증 실패 → OpenAI {fallback} 사용")
+                return await async_generate_with_openai(scenario, persona, guide_type, model=fallback)
+            if attempt == 2:
+                raise
+            await asyncio.sleep(1.5 ** attempt)
+    return ""
+
+
+async def async_generate_with_gemini(
+    scenario: str, persona: str, guide_type: GuideType, model: str = _GEMINI_FLASH
+) -> str:
+    """비동기 Gemini 응답 생성 (없으면 OpenAI fallback)."""
+    if not os.environ.get("GOOGLE_API_KEY"):
+        fallback = _OPENAI_HIGH if "3.5-flash" in model or "pro" in model else _OPENAI_MINI
+        return await async_generate_with_openai(scenario, persona, guide_type, model=fallback)
+
+    resolved = _resolve_model(model)
+    prompt = _build_prompt(scenario, persona, guide_type)
+    for attempt in range(3):
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+            gmodel = genai.GenerativeModel(resolved)
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, gmodel.generate_content, prompt)
+            return result.text.strip()
+        except Exception:
+            if attempt == 2:
+                raise
+            await asyncio.sleep(1.5 ** attempt)
+    return ""
+
+
+async def async_judge_pair(scenario: str, persona: str, a: str, b: str) -> Literal["A", "B", "TIE"]:
+    """비동기 GPT judge."""
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    prompt = (
+        f"4축(긴급도·중요도·의존성·시간 제약) 기준으로 더 나은 우선순위 정렬 응답을 선택하세요.\n"
+        f"페르소나: {persona}\n할 일: {scenario}\n\n"
+        f"A: {a}\nB: {b}\n\n"
+        "답: 'A', 'B', 'TIE' 중 하나만 출력."
+    )
+    for attempt in range(3):
+        try:
+            resp = await client.chat.completions.create(
+                model=_resolve_model(_OPENAI_HIGH),
+                messages=[{"role": "user", "content": prompt}],
+                max_completion_tokens=500,
+            )
+            verdict = resp.choices[0].message.content.strip().upper()
+            if verdict in ("A", "B", "TIE"):
+                return verdict  # type: ignore[return-value]
+            return "TIE"
+        except Exception:
+            if attempt == 2:
+                return "TIE"
+            await asyncio.sleep(1.5 ** attempt)
+    return "TIE"
+
+
+async def async_generate_four_candidates(
+    scenario: str, persona: str
+) -> tuple[str, str, str, str]:
+    """C1~C4 후보 4개 동시 생성."""
+    c1_task = async_generate_with_gemini(scenario, persona, "full",         model=_GEMINI_FLASH)
+    c2_task = async_generate_with_claude(scenario, persona, "full",         model=_CLAUDE_SONNET)
+    c3_task = async_generate_with_gemini(scenario, persona, "urgency_only", model=_GEMINI_LITE)
+    c4_task = async_generate_with_claude(scenario, persona, "none",         model=_CLAUDE_HAIKU)
+    c1, c2, c3, c4 = await asyncio.gather(c1_task, c2_task, c3_task, c4_task)
+    return c1, c2, c3, c4
+
+
 def generate_with_gemini(
     scenario: str, persona: str, guide_type: GuideType, model: str = _GEMINI_FLASH
 ) -> str:
@@ -206,7 +326,7 @@ def judge_pair(scenario: str, persona: str, a: str, b: str) -> Literal["A", "B",
 def generate_four_candidates(
     scenario: str, persona: str
 ) -> tuple[str, str, str, str]:
-    """C1~C4 후보 4개 생성.
+    """C1~C4 후보 4개 생성 (동기 버전).
 
     C1: gemini-3.5-flash    full guide   (고품질 1)
     C2: claude-sonnet-4-6   full guide   (고품질 2)
@@ -216,7 +336,6 @@ def generate_four_candidates(
     c1 = generate_with_gemini(scenario, persona, "full",         model=_GEMINI_FLASH)
     c2 = generate_with_claude(scenario, persona, "full",         model=_CLAUDE_SONNET)
     c3 = generate_with_gemini(scenario, persona, "urgency_only", model=_GEMINI_LITE)
-    # API key 없으면 CLI가 코딩 에이전트로 거부하므로 OpenAI/Gemini fallback
     if os.environ.get("ANTHROPIC_API_KEY"):
         c4 = generate_with_claude(scenario, persona, "none", model=_CLAUDE_HAIKU)
     else:
