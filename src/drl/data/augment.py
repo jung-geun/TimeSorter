@@ -39,9 +39,9 @@ _MODEL_ALIASES = {
     "claude-opus-4-6": "claude-opus-4-6",
     "claude-haiku-4-5": "claude-haiku-4-5",
     
-    # OpenAI
-    "gpt-5.5": "gpt-4o",
-    "gpt-5.4-mini": "gpt-4o-mini",
+    # OpenAI — gpt-5.5 / gpt-5.4-mini are accessible; gpt-4o-mini is blocked (403)
+    "gpt-5.5": "gpt-5.5",
+    "gpt-5.4-mini": "gpt-5.4-mini",
 }
 
 def _resolve_model(model_name: str) -> str:
@@ -87,6 +87,7 @@ def generate_with_claude(
             print(f"  [폴백] ANTHROPIC_API_KEY가 없어 {model} 대신 OpenAI {fallback_model}을 사용합니다.")
             return generate_with_openai(scenario, persona, guide_type, model=fallback_model)
 
+    orig_model = model
     model = _resolve_model(model)
     prompt = _build_prompt(scenario, persona, guide_type)
     for attempt in range(3):
@@ -102,7 +103,14 @@ def generate_with_claude(
                 return msg.content[0].text.strip()
             else:
                 return _run_cli(["claude", "-p", prompt, "--model", model])
-        except Exception:
+        except Exception as e:
+            err_str = str(e)
+            if "401" in err_str or "invalid x-api-key" in err_str or "authentication_error" in err_str:
+                if os.environ.get("OPENAI_API_KEY"):
+                    fallback_model = _OPENAI_HIGH if "sonnet" in orig_model or "opus" in orig_model else _OPENAI_MINI
+                    print(f"  [폴백] Anthropic 인증 실패 → OpenAI {fallback_model} 사용")
+                    return generate_with_openai(scenario, persona, guide_type, model=fallback_model)
+                raise
             if attempt == 2:
                 raise
             time.sleep(2 ** attempt)
