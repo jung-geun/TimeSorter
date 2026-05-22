@@ -1,4 +1,6 @@
-.PHONY: smoke train-mac train-4b train-8b sft dpo-final gen-data infer setup-mac setup-dgx test lint
+.PHONY: smoke train-mac train-4b train-8b sft dpo-final gen-data infer setup-mac setup-dgx test lint \
+        sft-rtx12g-4b dpo-rtx12g-4b pipeline-rtx12g-4b \
+        docker-build sft-docker dpo-docker pipeline-docker infer-docker docker-shell
 
 smoke:
 	bash scripts/smoke.sh
@@ -43,6 +45,15 @@ pipeline-dgx-4b: sft-dgx-4b dpo-dgx-4b
 # 전체 DGX 파이프라인 순차 실행 (8B)
 pipeline-dgx-8b: sft-dgx-8b dpo-dgx-8b
 
+# 12GB VRAM (RTX 3060/4070/4080 등) — QLoRA 4-bit, 4B 모델
+sft-rtx12g-4b:
+	uv run python -m drl.train_sft --config configs/sft_rtx12g_4b.yaml
+
+dpo-rtx12g-4b:
+	uv run python -m drl.train_dpo --config configs/dpo_rtx12g_4b.yaml
+
+pipeline-rtx12g-4b: sft-rtx12g-4b dpo-rtx12g-4b
+
 # 기존 DPO (generic)
 train-mac:
 	PYTORCH_ENABLE_MPS_FALLBACK=1 TOKENIZERS_PARALLELISM=false \
@@ -69,3 +80,37 @@ test:
 
 lint:
 	uv run ruff check src/ tests/
+
+# ── Docker (CUDA 12.4 + flash-attn) ─────────────────────────────────────────
+DOCKER_IMAGE ?= timesorter:cu124
+
+_DOCKER_RUN = docker run --rm --gpus all \
+	-v $(PWD):/workspace \
+	-v /workspace/.venv \
+	-v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
+	--env-file .env \
+	$(DOCKER_IMAGE)
+
+docker-build:
+	docker build -t $(DOCKER_IMAGE) .
+
+sft-docker:
+	$(_DOCKER_RUN) make sft-rtx12g-4b
+
+dpo-docker:
+	$(_DOCKER_RUN) make dpo-rtx12g-4b
+
+pipeline-docker:
+	$(_DOCKER_RUN) make pipeline-rtx12g-4b
+
+# 사용: make infer-docker ADAPTER=outputs/sft_rtx12g_4b PROMPT="할 일 목록..."
+infer-docker:
+	$(_DOCKER_RUN) make infer ADAPTER=$(ADAPTER) PROMPT="$(PROMPT)"
+
+docker-shell:
+	docker run --rm -it --gpus all \
+	-v $(PWD):/workspace \
+	-v /workspace/.venv \
+	-v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
+	--env-file .env \
+	$(DOCKER_IMAGE) bash

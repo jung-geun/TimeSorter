@@ -1,0 +1,35 @@
+# Stage 3 DPO — 12GB VRAM (RTX 3060/4070/4080 등), Qwen3-4B QLoRA 4-bit
+# SFT 체크포인트(outputs/sft_rtx12g_4b)에서 이어 학습
+# ref_model=None + PEFT disable 트릭 → 모델 1개만 메모리에 상주
+# effective batch = 2 × 16 = 32
+model_name: Qwen/Qwen3-4B-Instruct-2507
+sft_adapter: outputs/sft_rtx12g_4b
+dataset: data/dpo_pairs.parquet
+output_dir: outputs/dpo_rtx12g_4b
+max_samples: null
+max_prompt_len: 512
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 16   # effective batch = 32
+  num_train_epochs: 2
+  max_length: 1024
+  max_prompt_length: 512
+  beta: 0.1
+  learning_rate: 5.0e-7
+  gradient_checkpointing: true
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_steps: 100
+  save_strategy: "steps"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 4
+  optim: "adamw_torch_fused"

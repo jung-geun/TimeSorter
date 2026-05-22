@@ -5,7 +5,7 @@ import warnings
 from typing import TYPE_CHECKING
 
 import torch
-from peft import LoraConfig, PeftModel, get_peft_model
+from peft import LoraConfig, PeftModel, get_peft_model, prepare_model_for_kbit_training
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 if TYPE_CHECKING:
@@ -69,7 +69,13 @@ def load_model_and_tokenizer(
     if profile.device == "mps" and not use_4bit:
         model = model.to("mps")
 
-    if gradient_checkpointing:
+    if use_4bit:
+        # QLoRA: gradient flow를 위해 input_require_grads 설정 + gradient checkpointing 통합
+        model = prepare_model_for_kbit_training(
+            model,
+            use_gradient_checkpointing=gradient_checkpointing,
+        )
+    elif gradient_checkpointing:
         model.gradient_checkpointing_enable(
             gradient_checkpointing_kwargs={"use_reentrant": False}
         )

@@ -18,3 +18,9 @@ dist/
 data/ko_Ultrafeedback_binarized.parquet
 data/nemotron_personas_korea.parquet
 data/orca-dpo-pairs-ko.parquet
+
+# 생성 체크포인트 (재실행 시 자동 생성)
+data/*.ckpt.jsonl
+
+# 학습 로그
+logs/

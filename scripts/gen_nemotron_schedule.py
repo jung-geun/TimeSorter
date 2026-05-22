@@ -121,24 +121,25 @@ async def main_async():
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="처리할 시나리오 수 제한")
     parser.add_argument("--out", default="data/scheduler_ko.parquet")
-    parser.add_argument("--model", default="gpt-4o-mini", help="OpenAI 모델명")
+    parser.add_argument("--model", default="gpt-5.4-mini", help="OpenAI 모델명")
     parser.add_argument("--concurrency", type=int, default=15, help="동시 실행 데스크 수")
+    parser.add_argument("--random-state", type=int, default=42, help="페르소나 샘플링 랜덤 시드")
     args = parser.parse_args()
 
     # 1. 데이터 로드
     print("[1] 영문 시드 및 Nemotron 페르소나 데이터셋 로딩...")
     df_seed = pd.read_parquet("data/events-scheduling.parquet")
     df_nemotron = pd.read_parquet("data/nemotron_personas_korea.parquet")
-    
+
     if args.limit:
         df_seed = df_seed.head(args.limit)
-    
+
     num_samples = len(df_seed)
     print(f"  - 번역 대상 시드 시나리오: {num_samples}개")
-    
-    # 2. 페르소나 고유 샘플링 (재현성을 위해 seed 고정)
-    print(f"[2] Nemotron 데이터셋에서 고유 페르소나 {num_samples}개 샘플링...")
-    df_personas_sampled = df_nemotron.sample(n=num_samples, random_state=42).reset_index(drop=True)
+
+    # 2. 페르소나 고유 샘플링 (--random-state로 다양한 페르소나 조합 생성 가능)
+    print(f"[2] Nemotron 데이터셋에서 고유 페르소나 {num_samples}개 샘플링 (seed={args.random_state})...")
+    df_personas_sampled = df_nemotron.sample(n=num_samples, random_state=args.random_state).reset_index(drop=True)
     
     # 3. 비동기 작업 큐 생성 및 배치 처리
     print(f"[3] 비동기 번역 & 가공 엔진 기동 (동시 처리 한도: {args.concurrency})...")

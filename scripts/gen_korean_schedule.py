@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_PERSONAS = ["직장인", "학생", "프리랜서", "부모"]
+_PERSONAS = ["직장인", "학생", "프리랜서", "부모", "시니어", "창업자", "의료진", "연구자"]
 
 _TRANSLATE_PROMPT = """\
 다음 영문 이벤트/할 일 목록을 한국어 {persona} 페르소나의 일상 할 일 목록으로 자연스럽게 번역하라.

@@ -1,0 +1,12 @@
+.venv/
+.git/
+outputs/
+wandb/
+logs/
+data/*.parquet
+data/*.ckpt.jsonl
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+uv.lock
