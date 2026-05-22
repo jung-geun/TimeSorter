@@ -117,7 +117,7 @@ docker-shell:
 	$(DOCKER_IMAGE) bash
 
 # ── vLLM 서빙 ────────────────────────────────────────────────────────────────
-SERVE_IMAGE   ?= timesorter-serve:latest
+SERVE_IMAGE   ?= vllm/vllm-openai:v0.8.5
 ADAPTER       ?= outputs/dpo_rtx12g_4b
 LORA_NAME     ?= scheduler
 SERVE_PORT    ?= 8000

@@ -1,16 +1,14 @@
+# vLLM 서빙 이미지 — 공식 vllm/vllm-openai 기반
+# LoRA 어댑터(outputs/)와 HF 캐시는 런타임에 마운트
+#
+# 빌드:  make serve-build   (또는 pull만 해도 됨 — FROM 이미지 그대로 사용)
+# 실행:  make serve-docker
 FROM vllm/vllm-openai:v0.8.5
-
-# 어댑터와 configs만 복사 (모델 가중치는 HF 캐시 마운트로 처리)
-WORKDIR /workspace
-COPY outputs/ ./outputs/
-COPY configs/ ./configs/
 
 EXPOSE 8000
 
-# 기본 실행: LoRA 어댑터를 붙인 Qwen3-4B-Instruct 서빙
-# 환경변수로 오버라이드 가능
 ENV MODEL_NAME="Qwen/Qwen3-4B-Instruct-2507" \
-    LORA_PATH="outputs/dpo_rtx12g_4b" \
+    LORA_PATH="/workspace/outputs/dpo_rtx12g_4b" \
     LORA_NAME="scheduler" \
     MAX_MODEL_LEN="2048" \
     GPU_MEM_UTIL="0.85" \
