@@ -7,14 +7,23 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from .data.schema import (
+    SCHEDULER_SYSTEM_PROMPT_V1,
+    SCHEDULER_SYSTEM_PROMPT_V2,
+    parse_or_repair,
+    render_system_prompt,
+    response_to_text,
+)
 from .device import detect
 
 
 def generate(
     adapter_path: str,
     prompt: str,
-    max_new_tokens: int = 256,
+    max_new_tokens: int = 512,
     thinking: bool = False,
+    persona: str = "직장인",
+    schema_version: str = "v1",
 ) -> str:
     profile = detect()
     base_model_name = _read_base_model(adapter_path)
@@ -35,7 +44,13 @@ def generate(
     model = PeftModel.from_pretrained(base, adapter_path)
     model.train(False)  # inference mode (no dropout / batch-norm tracking)
 
-    messages = [{"role": "user", "content": prompt}]
+    system_tmpl = (
+        SCHEDULER_SYSTEM_PROMPT_V2 if schema_version == "v2" else SCHEDULER_SYSTEM_PROMPT_V1
+    )
+    messages = [
+        {"role": "system", "content": render_system_prompt(system_tmpl, persona)},
+        {"role": "user", "content": prompt},
+    ]
     # enable_thinking=False: Qwen3 thinking mode 비활성화 (빠른 직접 응답)
     text = tokenizer.apply_chat_template(
         messages,
@@ -56,7 +71,12 @@ def generate(
         )
 
     new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
-    return tokenizer.decode(new_tokens, skip_special_tokens=True)
+    raw = tokenizer.decode(new_tokens, skip_special_tokens=True)
+
+    if schema_version == "v2":
+        resp = parse_or_repair(raw)
+        return response_to_text(resp)
+    return raw
 
 
 def _read_base_model(adapter_path: str) -> str:
@@ -68,7 +88,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--adapter", required=True, help="어댑터 저장 경로")
     parser.add_argument("--prompt", required=True)
-    parser.add_argument("--max-new-tokens", type=int, default=256)
+    parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--thinking", action="store_true", help="Qwen3 thinking mode 활성화")
+    parser.add_argument("--persona", default="직장인")
+    parser.add_argument("--schema-version", default="v1", choices=["v1", "v2"])
     args = parser.parse_args()
-    print(generate(args.adapter, args.prompt, args.max_new_tokens, args.thinking))
+    print(generate(args.adapter, args.prompt, args.max_new_tokens, args.thinking,
+                   args.persona, args.schema_version))

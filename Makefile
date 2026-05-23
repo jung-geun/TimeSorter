@@ -1,8 +1,12 @@
 .PHONY: smoke train-mac train-4b train-8b sft dpo-final gen-data infer setup-mac setup-dgx test lint \
         sft-rtx12g-4b dpo-rtx12g-4b pipeline-rtx12g-4b \
+        sft-rtx12g-4b-v2 dpo-rtx12g-4b-v2 pipeline-rtx12g-4b-v2 \
         docker-build sft-docker dpo-docker pipeline-docker infer-docker docker-shell \
-        serve-build serve-docker serve-stop email-pipeline email-extract \
-        validate validate-and-pipeline
+        sft-docker-v2 dpo-docker-v2 \
+        serve-build serve-docker serve-stop serve-sft-docker serve-sft-stop \
+        email-pipeline email-pipeline-sft email-extract email-pipeline-v2 \
+        gen-data-v2 \
+        validate validate-sft validate-and-pipeline validate-and-pipeline-sft
 
 smoke:
 	bash scripts/smoke.sh
@@ -23,6 +27,11 @@ gen-pairs:
 	uv run python scripts/gen_preference_pairs.py $(if $(LIMIT),--limit $(LIMIT),)
 
 gen-data: gen-schedule gen-pairs
+
+# v2 데이터 생성 (Phase B-G 순차 실행)
+# 각 phase는 --limit 으로 dry-run 후 확인
+gen-data-v2:
+	@echo "v2 데이터 생성은 phase별로 수동 실행하세요. docs/PLAN_V2.md 참고"
 
 # Stage 3: DPO (SFT 체크포인트 위에서)
 dpo-final:
@@ -55,6 +64,21 @@ dpo-rtx12g-4b:
 	uv run python -m drl.train_dpo --config configs/dpo_rtx12g_4b.yaml
 
 pipeline-rtx12g-4b: sft-rtx12g-4b dpo-rtx12g-4b
+
+# v2 — JSON 스키마 + 4축 점수 학습 (데이터 준비 후 실행)
+sft-rtx12g-4b-v2:
+	uv run python -m drl.train_sft --config configs/sft_rtx12g_4b_v2.yaml
+
+dpo-rtx12g-4b-v2:
+	uv run python -m drl.train_dpo --config configs/dpo_rtx12g_4b_v2.yaml
+
+pipeline-rtx12g-4b-v2: sft-rtx12g-4b-v2 dpo-rtx12g-4b-v2
+
+sft-docker-v2:
+	$(_DOCKER_RUN) make sft-rtx12g-4b-v2
+
+dpo-docker-v2:
+	$(_DOCKER_RUN) make dpo-rtx12g-4b-v2
 
 # 기존 DPO (generic)
 train-mac:
@@ -119,36 +143,73 @@ docker-shell:
 
 # ── vLLM 서빙 ────────────────────────────────────────────────────────────────
 SERVE_IMAGE   ?= vllm/vllm-openai:v0.8.5
+BASE_MODEL    ?= Qwen/Qwen3-4B-Instruct-2507
 ADAPTER       ?= outputs/dpo_rtx12g_4b
 LORA_NAME     ?= scheduler
 SERVE_PORT    ?= 8000
 GPU_MEM_UTIL  ?= 0.85
+MAX_MODEL_LEN ?= 2048
 EMAIL_DIR     ?= data/sample_emails
 PERSONA       ?= 직장인
 
-# vLLM 서빙 이미지 빌드 (Dockerfile.serve 사용)
-serve-build:
-	docker build -f Dockerfile.serve -t $(SERVE_IMAGE) .
+# 공통 vLLM 인자 빌더 (인자: 컨테이너 내 어댑터 경로, lora 이름)
+# vllm/vllm-openai 이미지 ENTRYPOINT = python3 -m vllm.entrypoints.openai.api_server
+# → docker run <image> 뒤에는 인자만 넘겨야 함
+define _VLLM_ARGS
+--model $(BASE_MODEL) \
+  --enable-lora \
+  --lora-modules $(2)=/workspace/$(1) \
+  --dtype bfloat16 \
+  --max-model-len $(MAX_MODEL_LEN) \
+  --gpu-memory-utilization $(GPU_MEM_UTIL) \
+  --max-lora-rank 16 \
+  --host 0.0.0.0 --port 8000
+endef
 
-# vLLM 서버 기동 (백그라운드 데몬, GPU 점유)
+# vLLM 서빙 이미지 빌드 (Dockerfile.serve 사용, 선택적)
+serve-build:
+	docker build -f Dockerfile.serve -t timesorter-serve:latest .
+
+# DPO 서버 기동 (포트 8000)
 # 중지: make serve-stop  또는  docker stop timesorter-serve
 serve-docker:
 	docker run -d --name timesorter-serve --rm --gpus all \
 	  -v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
 	  -v $(PWD)/outputs:/workspace/outputs \
 	  -p $(SERVE_PORT):8000 \
-	  -e LORA_PATH=$(ADAPTER) \
-	  -e LORA_NAME=$(LORA_NAME) \
-	  -e GPU_MEM_UTIL=$(GPU_MEM_UTIL) \
-	  $(SERVE_IMAGE)
+	  $(SERVE_IMAGE) \
+	  $(call _VLLM_ARGS,$(ADAPTER),$(LORA_NAME))
 	@echo ""
-	@echo "[서버 기동] 로드까지 약 30~60초 소요됩니다."
+	@echo "[DPO 서버 기동] 로드까지 약 30~60초 소요됩니다."
 	@echo "  헬스체크: curl http://localhost:$(SERVE_PORT)/health"
 	@echo "  모델목록: curl http://localhost:$(SERVE_PORT)/v1/models"
 	@echo "  중지:     make serve-stop"
 
 serve-stop:
 	docker stop timesorter-serve 2>/dev/null || true
+
+# SFT 어댑터 서버 (포트 8001, DPO 서버와 동시 기동 가능)
+# 중지: make serve-sft-stop  또는  docker stop timesorter-serve-sft
+SFT_ADAPTER   ?= outputs/sft_rtx12g_4b
+SFT_LORA_NAME ?= sft
+SFT_PORT      ?= 8001
+
+serve-sft-docker:
+	docker run -d --name timesorter-serve-sft --rm --gpus all \
+	  -v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
+	  -v $(PWD)/outputs:/workspace/outputs \
+	  -p $(SFT_PORT):8000 \
+	  $(SERVE_IMAGE) \
+	  $(call _VLLM_ARGS,$(SFT_ADAPTER),$(SFT_LORA_NAME))
+	@echo ""
+	@echo "[SFT 서버 기동] 로드까지 약 30~60초 소요됩니다."
+	@echo "  헬스체크: curl http://localhost:$(SFT_PORT)/health"
+	@echo "  모델목록: curl http://localhost:$(SFT_PORT)/v1/models"
+	@echo "  중지:     make serve-sft-stop"
+	@echo "  (DPO 서버: make serve-docker  →  port $(SERVE_PORT))"
+
+serve-sft-stop:
+	docker stop timesorter-serve-sft 2>/dev/null || true
 
 # 이메일 → 스케줄 파이프라인 (vLLM 서버 필요)
 # 사용: make email-pipeline EMAIL_DIR=data/sample_emails PERSONA=직장인
@@ -159,6 +220,25 @@ email-pipeline:
 	  --server-url http://localhost:$(SERVE_PORT) \
 	  --model $(LORA_NAME) \
 	  --out outputs/schedule_result.json
+
+# v2 모델로 이메일 파이프라인 (JSON 스키마 출력)
+email-pipeline-v2:
+	uv run python scripts/email_to_schedule.py \
+	  --email-dir $(EMAIL_DIR) \
+	  --persona "$(PERSONA)" \
+	  --server-url http://localhost:$(SERVE_PORT) \
+	  --model $(LORA_NAME) \
+	  --schema-version v2 \
+	  --out outputs/schedule_result_v2.json
+
+# SFT 모델로 이메일 파이프라인 (포트 8001)
+email-pipeline-sft:
+	uv run python scripts/email_to_schedule.py \
+	  --email-dir $(EMAIL_DIR) \
+	  --persona "$(PERSONA)" \
+	  --server-url http://localhost:$(SFT_PORT) \
+	  --model $(SFT_LORA_NAME) \
+	  --out outputs/schedule_result_sft.json
 
 # 태스크 추출만 (vLLM 서버 불필요, OpenAI만 사용)
 email-extract:
@@ -180,6 +260,17 @@ validate:
 	  --judge $(JUDGE_MODEL) \
 	  --out outputs/validation_result.json
 
+# SFT 결과 검증
+validate-sft:
+	uv run python scripts/validate_schedule.py \
+	  --result outputs/schedule_result_sft.json \
+	  --email-dir $(EMAIL_DIR) \
+	  --judge $(JUDGE_MODEL) \
+	  --out outputs/validation_result_sft.json
+
 # 파이프라인 실행 후 즉시 검증 (순차)
 # 사용: make validate-and-pipeline EMAIL_DIR=data/sample_emails
 validate-and-pipeline: email-pipeline validate
+
+# SFT 파이프라인 실행 후 즉시 검증
+validate-and-pipeline-sft: email-pipeline-sft validate-sft

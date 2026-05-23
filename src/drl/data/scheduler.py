@@ -5,16 +5,15 @@ from typing import TYPE_CHECKING
 
 from datasets import Dataset
 
+from .schema import SCHEDULER_SYSTEM_PROMPT_V1, SCHEDULER_SYSTEM_PROMPT_V2, render_system_prompt
+
 if TYPE_CHECKING:
     pass
 
 _PERSONAS = ["직장인", "학생", "프리랜서", "부모"]
 
-_SYSTEM_TMPL = (
-    "당신은 {persona}를 위한 우선순위 정렬 비서입니다. "
-    "4축(긴급도·중요도·의존성·시간 제약)으로 할 일을 분석해 "
-    "'1) [할일] 2) [할일] ...' 형식으로 답하세요."
-)
+# 하위 호환 — v1 어댑터 학습 코드가 직접 참조하는 경우 대비
+_SYSTEM_TMPL = SCHEDULER_SYSTEM_PROMPT_V1
 
 _KO_SCHEDULING_KEYWORDS = [
     "일정", "우선순위", "할 일", "할일", "계획", "스케줄", "업무",
@@ -22,10 +21,18 @@ _KO_SCHEDULING_KEYWORDS = [
 ]
 
 
-def _to_chatml(prompt: str, response: str, persona: str = "직장인") -> dict:
+def _to_chatml(
+    prompt: str,
+    response: str,
+    persona: str = "직장인",
+    schema_version: str = "v1",
+) -> dict:
+    system_tmpl = (
+        SCHEDULER_SYSTEM_PROMPT_V2 if schema_version == "v2" else SCHEDULER_SYSTEM_PROMPT_V1
+    )
     return {
         "messages": [
-            {"role": "system", "content": _SYSTEM_TMPL.format(persona=persona)},
+            {"role": "system", "content": render_system_prompt(system_tmpl, persona)},
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": response},
         ]
@@ -58,6 +65,7 @@ def load_scheduler_dataset(
     parquet_path: str | None = None,
     ko_ultrafeedback_n: int = 0,
     max_samples: int | None = None,
+    schema_version: str = "v1",
 ) -> Dataset:
     """SFT용 스케줄러 데이터셋 로드.
 
@@ -74,7 +82,7 @@ def load_scheduler_dataset(
         df = pd.read_parquet(parquet_path)
         for _, r in df.iterrows():
             persona = r.get("persona", "직장인")
-            rows.append(_to_chatml(str(r["prompt"]), str(r["chosen"]), persona))
+            rows.append(_to_chatml(str(r["prompt"]), str(r["chosen"]), persona, schema_version))
         print(f"[scheduler] parquet 로드: {len(rows)}개 ({parquet_path})")
 
     # parquet가 없거나 비어있으면 ko_Ultrafeedback으로 자동 fallback

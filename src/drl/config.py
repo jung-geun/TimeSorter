@@ -24,6 +24,7 @@ class RunConfig:
     max_seq_length: int = 2048
     sft_adapter: str | None = None
     ko_ultrafeedback_n: int = 0
+    schema_version: str = "v1"
     wandb_project: str = "drl-qwen3"
     wandb_run_name: str | None = None
     lora: LoraArgs = field(default_factory=LoraArgs)
@@ -45,6 +46,7 @@ class RunConfig:
             ko_ultrafeedback_n=data.get("ko_ultrafeedback_n", 0),
             wandb_project=data.get("wandb_project", "drl-qwen3"),
             wandb_run_name=data.get("wandb_run_name"),
+            schema_version=data.get("schema_version", "v1"),
             lora=lora,
             training_args=data.get("training_args", {}),
         )

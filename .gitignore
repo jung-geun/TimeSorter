@@ -1,9 +1,5 @@
 .venv/
-outputs/
 wandb/
-*.pt
-*.safetensors
-*.bin
 __pycache__/
 *.pyc
 .env
@@ -13,14 +9,14 @@ dist/
 .pytest_cache/
 .DS_Store
 .omc/
+logs/
 
-# 대용량 HF 다운로드 데이터셋 (download_datasets.py / download_nemotron.py로 재생성)
+# HF 원본 대용량 다운로드 (download_datasets.py / download_nemotron.py로 재생성)
 data/ko_Ultrafeedback_binarized.parquet
 data/nemotron_personas_korea.parquet
 data/orca-dpo-pairs-ko.parquet
 
-# 생성 체크포인트 (재실행 시 자동 생성)
+# 생성 체크포인트 및 API 캐시 (재실행 시 자동 생성)
 data/*.ckpt.jsonl
-
-# 학습 로그
-logs/
+outputs/.ckpt_*.jsonl
+outputs/.api_cache*.jsonl

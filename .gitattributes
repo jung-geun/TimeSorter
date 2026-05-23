@@ -1,2 +1,5 @@
-data/*.parquet filter=lfs diff=lfs merge=lfs -text
-data/*.jsonl filter=lfs diff=lfs merge=lfs -text
+# Git LFS — 모델 가중치 및 데이터셋
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+*.parquet     filter=lfs diff=lfs merge=lfs -text
+*.bin         filter=lfs diff=lfs merge=lfs -text
+*.pt          filter=lfs diff=lfs merge=lfs -text

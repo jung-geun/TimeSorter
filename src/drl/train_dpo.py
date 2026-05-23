@@ -7,7 +7,7 @@ from pathlib import Path
 from trl import DPOConfig, DPOTrainer
 
 from .config import RunConfig
-from .data.loader import load_dpo_dataset
+from .data.loader import load_dpo_dataset, _apply_system_to_dpo
 from .device import detect
 from .model import load_model_and_tokenizer
 
@@ -63,6 +63,8 @@ def main(config_path: str) -> None:
         max_prompt_len=cfg.max_prompt_len,
         max_response_len=max_response_len,
     )
+    if cfg.schema_version == "v2":
+        ds = _apply_system_to_dpo(ds, tokenizer, schema_version="v2")
     print(f"[data] {len(ds)}개 샘플 로드: {cfg.dataset}")
 
     # bf16=True는 CUDA mixed-precision 전용.

@@ -1,0 +1,32 @@
+# Stage 2 SFT v2 — JSON 스키마 출력 + 4축 점수 라벨링
+# v2 데이터셋(scheduler_v2_combined.parquet)이 준비된 후 실행
+# schema_version: v2 → SCHEDULER_SYSTEM_PROMPT_V2 + JSON chosen 형식
+model_name: Qwen/Qwen3-4B-Instruct-2507
+dataset: data/scheduler_v2_combined.parquet
+output_dir: outputs/sft_rtx12g_4b_v2
+max_samples: null
+ko_ultrafeedback_n: 0
+max_seq_length: 2048          # 2560 OOM → 2048로 복원
+schema_version: "v2"
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  num_train_epochs: 3
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  packing: true
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

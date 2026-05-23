@@ -155,7 +155,7 @@ async def async_generate_with_openai(
                 max_completion_tokens=2000,
             )
             return resp.choices[0].message.content.strip()
-        except Exception as e:
+        except Exception:
             if attempt == 2:
                 raise
             await asyncio.sleep(1.5 ** attempt)
