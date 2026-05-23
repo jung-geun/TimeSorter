@@ -1,0 +1,28 @@
+model_name: Qwen/Qwen3.5-4B
+dataset: data/scheduler_ko_combined.parquet
+output_dir: outputs/sft_mac
+max_samples: 300
+max_seq_length: 1024
+ko_ultrafeedback_n: 0
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  use_4bit: false   # MPS bitsandbytes 미지원
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8   # eff_batch = 8
+  num_train_epochs: 1
+  learning_rate: 2.0e-5
+  gradient_checkpointing: false    # MPS reentrant 미지원
+  packing: false
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 5
+  save_strategy: "epoch"
+  report_to: "none"
+  remove_unused_columns: false
+  dataloader_num_workers: 0        # MPS fork 안전
+  optim: "adamw_torch"

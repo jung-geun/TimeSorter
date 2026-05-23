@@ -1,3 +1,5 @@
+export HF_HOME ?= $(CURDIR)/models
+
 .PHONY: smoke train-mac train-4b train-8b sft dpo-final gen-data infer setup-mac setup-dgx test lint \
         download download-models \
         sft-rtx12g-4b dpo-rtx12g-4b pipeline-rtx12g-4b \
@@ -168,7 +170,7 @@ DOCKER_IMAGE ?= timesorter:cu124
 _DOCKER_RUN = docker run --rm --gpus all \
 	-v $(PWD):/workspace \
 	-v /workspace/.venv \
-	-v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
+	-v $(CURDIR)/models:/root/.cache/huggingface \
 	--env-file .env \
 	$(DOCKER_IMAGE)
 
@@ -192,7 +194,7 @@ docker-shell:
 	docker run --rm -it --gpus all \
 	-v $(PWD):/workspace \
 	-v /workspace/.venv \
-	-v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
+	-v $(CURDIR)/models:/root/.cache/huggingface \
 	--env-file .env \
 	$(DOCKER_IMAGE) bash
 
@@ -229,7 +231,7 @@ serve-build:
 # 중지: make serve-stop  또는  docker stop timesorter-serve
 serve-docker:
 	docker run -d --name timesorter-serve --rm --gpus all \
-	  -v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
+	  -v $(CURDIR)/models:/root/.cache/huggingface \
 	  -v $(PWD)/outputs:/workspace/outputs \
 	  -p $(SERVE_PORT):8000 \
 	  $(SERVE_IMAGE) \
@@ -251,7 +253,7 @@ SFT_PORT      ?= 8001
 
 serve-sft-docker:
 	docker run -d --name timesorter-serve-sft --rm --gpus all \
-	  -v $(HOME)/.cache/huggingface:/root/.cache/huggingface \
+	  -v $(CURDIR)/models:/root/.cache/huggingface \
 	  -v $(PWD)/outputs:/workspace/outputs \
 	  -p $(SFT_PORT):8000 \
 	  $(SERVE_IMAGE) \

@@ -20,3 +20,6 @@ data/orca-dpo-pairs-ko.parquet
 data/*.ckpt.jsonl
 outputs/.ckpt_*.jsonl
 outputs/.api_cache*.jsonl
+
+# HuggingFace 모델 로컬 캐시 (make download-models 으로 재생성)
+models/
