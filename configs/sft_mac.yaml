@@ -1,11 +1,11 @@
 model_name: Qwen/Qwen3.5-4B
-dataset: data/scheduler_ko_combined.parquet
-output_dir: outputs/sft_mac
+dataset: data/scheduler_v2_combined.parquet
+output_dir: outputs/sft_mac_v2
 max_samples: 300
 max_seq_length: 1024
 ko_ultrafeedback_n: 0
 wandb_project: drl-qwen3
-wandb_run_name: sft-mac-4b-5ep-v2
+wandb_run_name: sft-mac-4b-5ep-v2-correct
 schema_version: v2
 
 lora:
