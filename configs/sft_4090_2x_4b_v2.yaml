@@ -13,8 +13,8 @@ lora:
   use_4bit: false
 
 training_args:
-  per_device_train_batch_size: 4   # 2 GPUs × 4 × 4 = eff_batch 32
-  gradient_accumulation_steps: 4
+  per_device_train_batch_size: 2   # 2 GPUs × 2 × 8 = eff_batch 32  (OOM fix: bs4 fails on 23.5GB)
+  gradient_accumulation_steps: 8
   num_train_epochs: 3
   learning_rate: 2.0e-5
   bf16: true

@@ -20,9 +20,9 @@ download:
 
 # HuggingFace 모델 가중치 사전 다운로드 (학습 시 자동으로도 되지만, 미리 캐싱)
 download-models:
-	uv run huggingface-cli download Qwen/Qwen3.5-2B
-	uv run huggingface-cli download Qwen/Qwen3.5-4B
-	uv run huggingface-cli download Qwen/Qwen3.5-9B
+	uv run hf download Qwen/Qwen3.5-2B
+	uv run hf download Qwen/Qwen3.5-4B
+	uv run hf download Qwen/Qwen3.5-9B
 
 smoke:
 	bash scripts/smoke.sh
