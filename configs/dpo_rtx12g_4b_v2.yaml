@@ -1,7 +1,7 @@
 # Stage 3 DPO v2 — JSON 스키마 + 4축 점수 라벨링
 # SFT v2 체크포인트(outputs/sft_rtx12g_4b_v2)에서 이어 학습
 # schema_version: v2 → _apply_system_to_dpo가 system prompt를 DPO prompt에 삽입
-model_name: Qwen/Qwen3-4B-Instruct-2507
+model_name: Qwen/Qwen3.5-4B
 sft_adapter: outputs/sft_rtx12g_4b_v2
 dataset: data/dpo_pairs_v2.parquet
 output_dir: outputs/dpo_rtx12g_4b_v2

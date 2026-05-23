@@ -1,4 +1,4 @@
-model_name: Qwen/Qwen3-1.7B
+model_name: Qwen/Qwen3.5-2B
 dataset: data/ko_Ultrafeedback_binarized.parquet
 output_dir: outputs/mac_smoke
 max_samples: 32

@@ -1,0 +1,35 @@
+model_name: Qwen/Qwen3.5-4B
+sft_adapter: outputs/sft_4090_2x_4b_v2
+dataset: data/dpo_pairs_v2.parquet
+output_dir: outputs/dpo_4090_2x_4b_v2
+max_samples: null
+max_prompt_len: 768
+
+schema_version: "v2"
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: false
+
+training_args:
+  per_device_train_batch_size: 2   # 2 GPUs × 2 × 8 = eff_batch 32
+  gradient_accumulation_steps: 8
+  num_train_epochs: 2
+  max_length: 1536
+  max_prompt_length: 768
+  beta: 0.1
+  learning_rate: 5.0e-7
+  bf16: true
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 4
+  optim: "adamw_torch_fused"

@@ -1,6 +1,6 @@
 # Stage 3 DPO — DGX Spark (ARM64, 120GB VRAM), 4B
 # SFT 체크포인트(outputs/sft_dgx_4b)에서 이어 학습
-model_name: Qwen/Qwen3-4B-Instruct-2507
+model_name: Qwen/Qwen3.5-4B
 sft_adapter: outputs/sft_dgx_4b
 dataset: data/dpo_pairs.parquet
 output_dir: outputs/dpo_dgx_4b

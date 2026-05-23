@@ -42,6 +42,23 @@ def main(config_path: str) -> None:
     profile = detect()
     print(f"[device] {profile.device} | dtype={profile.dtype} | 4bit={profile.supports_4bit}")
 
+    _auto: dict = {}
+    if cfg.auto_batch and profile.device == "cuda":
+        from .device import _estimate_params_b, auto_batch_config, vram_per_gpu_gb
+        _vram = vram_per_gpu_gb()
+        _params_b = _estimate_params_b(cfg.model_name)
+        _auto = auto_batch_config(_vram, mode="dpo", target_eff_batch=cfg.target_eff_batch, model_params_b=_params_b)
+        cfg.lora.use_4bit = _auto["use_4bit"]
+        import os
+        world = int(os.environ.get("WORLD_SIZE", 1))
+        print(
+            f"[auto-batch] VRAM={_vram:.1f}GB × {world}GPU → "
+            f"bs={_auto['per_device_train_batch_size']}, "
+            f"grad_accum={_auto['gradient_accumulation_steps']}, "
+            f"4bit={_auto['use_4bit']} "
+            f"(eff_batch={_auto['per_device_train_batch_size'] * world * _auto['gradient_accumulation_steps']})"
+        )
+
     model, tokenizer = load_model_and_tokenizer(
         model_name=cfg.model_name,
         profile=profile,
@@ -79,7 +96,10 @@ def main(config_path: str) -> None:
         "report_to": "none",
         "remove_unused_columns": False,
     }
-    training_kwargs.update(cfg.training_args)
+    if _auto:
+        training_kwargs["per_device_train_batch_size"] = _auto["per_device_train_batch_size"]
+        training_kwargs["gradient_accumulation_steps"] = _auto["gradient_accumulation_steps"]
+    training_kwargs.update(cfg.training_args)  # yaml 명시값이 auto 값을 덮어씀
 
     if training_kwargs.get("report_to") == "wandb":
         _init_wandb(cfg)

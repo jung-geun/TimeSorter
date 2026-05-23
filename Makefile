@@ -1,12 +1,26 @@
 .PHONY: smoke train-mac train-4b train-8b sft dpo-final gen-data infer setup-mac setup-dgx test lint \
+        download download-models \
         sft-rtx12g-4b dpo-rtx12g-4b pipeline-rtx12g-4b \
         sft-rtx12g-4b-v2 dpo-rtx12g-4b-v2 pipeline-rtx12g-4b-v2 \
+        sft-4090-2x-4b dpo-4090-2x-4b pipeline-4090-2x-4b \
+        sft-4090-2x-4b-v2 dpo-4090-2x-4b-v2 pipeline-4090-2x-4b-v2 \
+        sft-auto dpo-auto pipeline-auto \
+        sft-auto-v2 dpo-auto-v2 pipeline-auto-v2 \
         docker-build sft-docker dpo-docker pipeline-docker infer-docker docker-shell \
         sft-docker-v2 dpo-docker-v2 \
         serve-build serve-docker serve-stop serve-sft-docker serve-sft-stop \
         email-pipeline email-pipeline-sft email-extract email-pipeline-v2 \
         gen-data-v2 \
         validate validate-sft validate-and-pipeline validate-and-pipeline-sft
+
+download:
+	uv run python scripts/download_datasets.py
+
+# HuggingFace 모델 가중치 사전 다운로드 (학습 시 자동으로도 되지만, 미리 캐싱)
+download-models:
+	uv run huggingface-cli download Qwen/Qwen3.5-2B
+	uv run huggingface-cli download Qwen/Qwen3.5-4B
+	uv run huggingface-cli download Qwen/Qwen3.5-9B
 
 smoke:
 	bash scripts/smoke.sh
@@ -73,6 +87,47 @@ dpo-rtx12g-4b-v2:
 	uv run python -m drl.train_dpo --config configs/dpo_rtx12g_4b_v2.yaml
 
 pipeline-rtx12g-4b-v2: sft-rtx12g-4b-v2 dpo-rtx12g-4b-v2
+
+# RTX 4090 × 2 (24GB × 2) — bf16 LoRA, DDP 2-GPU
+# 실행 전: pip install accelerate 확인
+sft-4090-2x-4b:
+	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
+	  -m drl.train_sft --config configs/sft_4090_2x_4b.yaml
+
+dpo-4090-2x-4b:
+	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
+	  -m drl.train_dpo --config configs/dpo_4090_2x_4b.yaml
+
+pipeline-4090-2x-4b: sft-4090-2x-4b dpo-4090-2x-4b
+
+sft-4090-2x-4b-v2:
+	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
+	  -m drl.train_sft --config configs/sft_4090_2x_4b_v2.yaml
+
+dpo-4090-2x-4b-v2:
+	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
+	  -m drl.train_dpo --config configs/dpo_4090_2x_4b_v2.yaml
+
+pipeline-4090-2x-4b-v2: sft-4090-2x-4b-v2 dpo-4090-2x-4b-v2
+
+# 하드웨어 무관 — 실행 시점 VRAM으로 bs/grad_accum/4bit 자동 산출
+# 단일 GPU: uv run python -m drl.train_sft --config configs/sft_auto.yaml
+# 멀티 GPU: accelerate launch --config_file configs/accelerate_4090_2x.yaml -m drl.train_sft ...
+sft-auto:
+	uv run python -m drl.train_sft --config configs/sft_auto.yaml
+
+dpo-auto:
+	uv run python -m drl.train_dpo --config configs/dpo_auto.yaml
+
+pipeline-auto: sft-auto dpo-auto
+
+sft-auto-v2:
+	uv run python -m drl.train_sft --config configs/sft_auto_v2.yaml
+
+dpo-auto-v2:
+	uv run python -m drl.train_dpo --config configs/dpo_auto_v2.yaml
+
+pipeline-auto-v2: sft-auto-v2 dpo-auto-v2
 
 sft-docker-v2:
 	$(_DOCKER_RUN) make sft-rtx12g-4b-v2

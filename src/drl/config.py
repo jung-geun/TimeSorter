@@ -27,6 +27,8 @@ class RunConfig:
     schema_version: str = "v1"
     wandb_project: str = "drl-qwen3"
     wandb_run_name: str | None = None
+    auto_batch: bool = False
+    target_eff_batch: int = 32
     lora: LoraArgs = field(default_factory=LoraArgs)
     training_args: dict[str, Any] = field(default_factory=dict)
 
@@ -46,6 +48,8 @@ class RunConfig:
             ko_ultrafeedback_n=data.get("ko_ultrafeedback_n", 0),
             wandb_project=data.get("wandb_project", "drl-qwen3"),
             wandb_run_name=data.get("wandb_run_name"),
+            auto_batch=data.get("auto_batch", False),
+            target_eff_batch=data.get("target_eff_batch", 32),
             schema_version=data.get("schema_version", "v1"),
             lora=lora,
             training_args=data.get("training_args", {}),

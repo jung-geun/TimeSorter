@@ -1,7 +1,7 @@
 # Stage 2 SFT — 12GB VRAM (RTX 3060/4070/4080 등), Qwen3-4B QLoRA 4-bit
 # 모델 weights ~2.5GB (NF4 double quant) + LoRA + 활성화 → 총 ~8-10GB 예상
 # effective batch = 4 × 8 = 32 (DGX와 동일)
-model_name: Qwen/Qwen3-4B-Instruct-2507
+model_name: Qwen/Qwen3.5-4B
 dataset: data/scheduler_ko_combined.parquet
 output_dir: outputs/sft_rtx12g_4b
 max_samples: null

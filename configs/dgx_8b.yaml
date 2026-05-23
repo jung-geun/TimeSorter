@@ -1,5 +1,5 @@
 # DGX Spark (ARM64 + Blackwell) — bf16 LoRA, gradient_checkpointing 활성
-model_name: Qwen/Qwen3-8B
+model_name: Qwen/Qwen3.5-9B
 dataset: data/ko_Ultrafeedback_binarized.parquet
 output_dir: outputs/dgx_8b
 max_samples: null

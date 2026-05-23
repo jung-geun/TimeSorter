@@ -2,7 +2,7 @@
 # SFT 체크포인트(outputs/sft_rtx12g_4b)에서 이어 학습
 # ref_model=None + PEFT disable 트릭 → 모델 1개만 메모리에 상주
 # effective batch = 2 × 16 = 32
-model_name: Qwen/Qwen3-4B-Instruct-2507
+model_name: Qwen/Qwen3.5-4B
 sft_adapter: outputs/sft_rtx12g_4b
 dataset: data/dpo_pairs.parquet
 output_dir: outputs/dpo_rtx12g_4b

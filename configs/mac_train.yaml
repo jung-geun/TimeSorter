@@ -1,6 +1,6 @@
 # MacBook Pro (Apple Silicon MPS) — 실제 학습용
 # Qwen3-1.7B + bf16 LoRA, PYTORCH_ENABLE_MPS_FALLBACK=1 필요
-model_name: Qwen/Qwen3-1.7B
+model_name: Qwen/Qwen3.5-2B
 dataset: data/ko_Ultrafeedback_binarized.parquet
 output_dir: outputs/mac_1.7b
 max_samples: null

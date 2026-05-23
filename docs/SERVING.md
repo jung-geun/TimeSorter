@@ -52,7 +52,7 @@ docker run -d --name timesorter-serve --rm --gpus all \
 
 ```bash
 python -m vllm.entrypoints.openai.api_server \
-    --model Qwen/Qwen3-4B-Instruct-2507 \
+    --model Qwen/Qwen3.5-4B \
     --enable-lora \
     --lora-modules scheduler=outputs/dpo_rtx12g_4b \
     --dtype bfloat16 \
@@ -66,7 +66,7 @@ python -m vllm.entrypoints.openai.api_server \
 
 ```bash
 python -m vllm.entrypoints.openai.api_server \
-    --model Qwen/Qwen3-4B-Instruct-2507 \
+    --model Qwen/Qwen3.5-4B \
     --enable-lora \
     --lora-modules scheduler=outputs/dpo_rtx12g_4b \
     --dtype bfloat16 \

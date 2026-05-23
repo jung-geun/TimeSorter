@@ -1,22 +1,22 @@
-# Stage 1 SFT — DGX Spark (ARM64, 120GB VRAM)
-# 8B 모델 bf16 LoRA. 120GB에서 bs=8 충분 (~58GB 사용 예상)
-model_name: Qwen/Qwen3.5-9B
-dataset: data/scheduler_ko.parquet
-output_dir: outputs/sft_dgx_8b
+model_name: Qwen/Qwen3.5-4B
+dataset: data/scheduler_ko_combined.parquet
+output_dir: outputs/sft_4090_2x_4b
 max_samples: null
+ko_ultrafeedback_n: 500
 max_seq_length: 2048
 
 lora:
   r: 16
   alpha: 32
   dropout: 0.05
-  use_4bit: false
+  use_4bit: false          # 24GB VRAM → bf16 LoRA 충분
 
 training_args:
-  per_device_train_batch_size: 8
-  gradient_accumulation_steps: 4     # effective batch = 32
-  num_train_epochs: 2
+  per_device_train_batch_size: 4   # 2 GPUs × 4 × 4 = eff_batch 32
+  gradient_accumulation_steps: 4
+  num_train_epochs: 5
   learning_rate: 2.0e-5
+  bf16: true
   gradient_checkpointing: true
   gradient_checkpointing_kwargs:
     use_reentrant: false
@@ -24,7 +24,7 @@ training_args:
   warmup_ratio: 0.03
   lr_scheduler_type: "cosine"
   logging_steps: 10
-  save_steps: 200
+  save_steps: 100
   save_strategy: "steps"
   report_to: "wandb"
   remove_unused_columns: false

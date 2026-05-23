@@ -1,11 +1,9 @@
-# Stage 3 — DPO post-training (SFT 체크포인트 위에서 이어 학습)
-# 데이터: data/dpo_pairs.parquet (gen_preference_pairs.py 산출물)
 model_name: Qwen/Qwen3.5-4B
-sft_adapter: outputs/sft_scheduler
+sft_adapter: outputs/sft_4090_2x_4b
 dataset: data/dpo_pairs.parquet
-output_dir: outputs/dpo_final
+output_dir: outputs/dpo_4090_2x_4b
 max_samples: null
-max_prompt_len: 1024
+max_prompt_len: 512
 
 lora:
   r: 16
@@ -14,18 +12,23 @@ lora:
   use_4bit: false
 
 training_args:
-  per_device_train_batch_size: 2
+  per_device_train_batch_size: 2   # 2 GPUs × 2 × 8 = eff_batch 32
   gradient_accumulation_steps: 8
   num_train_epochs: 2
-  max_length: 2048
-  max_prompt_length: 1024
+  max_length: 1024
+  max_prompt_length: 512
   beta: 0.1
   learning_rate: 5.0e-7
-  gradient_checkpointing: false
+  bf16: true
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
   warmup_ratio: 0.05
   lr_scheduler_type: "cosine"
   logging_steps: 10
-  save_steps: 200
+  save_steps: 100
   save_strategy: "steps"
   report_to: "wandb"
   remove_unused_columns: false
+  dataloader_num_workers: 4
+  optim: "adamw_torch_fused"

@@ -1,0 +1,34 @@
+model_name: Qwen/Qwen3.5-4B
+sft_adapter: outputs/sft_auto_v2
+dataset: data/dpo_pairs_v2.parquet
+output_dir: outputs/dpo_auto_v2
+max_samples: null
+max_prompt_len: 768
+
+schema_version: "v2"
+auto_batch: true
+target_eff_batch: 32
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: false
+
+training_args:
+  num_train_epochs: 2
+  max_length: 1536
+  max_prompt_length: 768
+  beta: 0.1
+  learning_rate: 5.0e-7
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 4
+  optim: "adamw_torch_fused"

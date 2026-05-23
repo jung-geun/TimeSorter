@@ -11,6 +11,7 @@ DATASETS_TO_DOWNLOAD = {
     "maywell/ko_Ultrafeedback_binarized": "data/ko_Ultrafeedback_binarized.parquet",
     "SJ-Donald/orca-dpo-pairs-ko": "data/orca-dpo-pairs-ko.parquet",
     "anakin87/events-scheduling": "data/events-scheduling.parquet",
+    "nvidia/Nemotron-Personas-Korea": "data/nemotron_personas_korea.parquet",
 }
 
 def main():

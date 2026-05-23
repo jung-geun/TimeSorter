@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import platform
 import warnings
 from typing import TYPE_CHECKING
@@ -48,6 +49,11 @@ def load_model_and_tokenizer(
         "attn_implementation": profile.attn_impl,
     }
 
+    # DDP 환경(accelerate launch)에서는 각 프로세스가 자신의 GPU에만 로드해야 함.
+    # device_map="auto"는 단일 프로세스에서 레이어를 여러 GPU에 분산시키므로 DDP와 충돌.
+    local_rank = int(os.environ.get("LOCAL_RANK", -1))
+    _cuda_device_map = {"": local_rank} if local_rank >= 0 else "auto"
+
     if use_4bit:
         from transformers import BitsAndBytesConfig
 
@@ -58,10 +64,9 @@ def load_model_and_tokenizer(
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
         load_kwargs["quantization_config"] = bnb_cfg
-        load_kwargs["device_map"] = "auto"
+        load_kwargs["device_map"] = _cuda_device_map
     elif profile.device == "cuda":
-        # CUDA는 device_map으로 멀티-GPU 자동 배치 지원
-        load_kwargs["device_map"] = "auto"
+        load_kwargs["device_map"] = _cuda_device_map
     # MPS/CPU는 device_map 미지원 → 로딩 후 .to(device)
 
     model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)

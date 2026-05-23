@@ -1,5 +1,5 @@
 # Mac MPS SFT smoke — Qwen3-1.7B, ko_Ultrafeedback scheduling 필터, 2 steps
-model_name: Qwen/Qwen3-1.7B
+model_name: Qwen/Qwen3.5-2B
 dataset: data/scheduler_ko.parquet
 output_dir: outputs/sft_mac_smoke
 max_samples: 64

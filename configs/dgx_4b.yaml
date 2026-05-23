@@ -1,5 +1,5 @@
 # DGX Spark (ARM64 + Blackwell) — bf16 LoRA (QLoRA는 ARM64 wheel 부재로 미사용)
-model_name: Qwen/Qwen3-4B-Instruct-2507
+model_name: Qwen/Qwen3.5-4B
 dataset: data/ko_Ultrafeedback_binarized.parquet
 output_dir: outputs/dgx_4b
 max_samples: null

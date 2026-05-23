@@ -1,7 +1,7 @@
 # Stage 1 — 스케줄 SFT
 # 데이터: data/scheduler_ko.parquet (gen_korean_schedule.py 산출물)
 #         없으면 ko_Ultrafeedback_binarized에서 scheduling 키워드 자동 필터
-model_name: Qwen/Qwen3-4B-Instruct-2507
+model_name: Qwen/Qwen3.5-4B
 dataset: data/scheduler_ko.parquet
 output_dir: outputs/sft_scheduler
 max_samples: null
