@@ -37,4 +37,4 @@ else:
 
 echo ""
 echo "셋업 완료. 4B 학습 시작:"
-echo "  uv run python -m drl.train_dpo --config configs/dgx_4b.yaml"
+echo "  uv run python -m timesorter.train_dpo --config configs/dgx_4b.yaml"

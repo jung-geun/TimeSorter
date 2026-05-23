@@ -29,7 +29,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from drl.data.schema import parse_lenient
+from timesorter.data.schema import parse_lenient
 
 _SFT_SOURCES = [
     ("data/scheduler_v2_regen.parquet",         "regen"),

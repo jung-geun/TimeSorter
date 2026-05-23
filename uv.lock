@@ -429,70 +429,6 @@ wheels = [
 ]
 
 [[package]]
-name = "drl"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "accelerate" },
-    { name = "anthropic" },
-    { name = "bitsandbytes" },
-    { name = "datasets" },
-    { name = "huggingface-hub" },
-    { name = "matplotlib" },
-    { name = "openai" },
-    { name = "pandas" },
-    { name = "peft" },
-    { name = "pyarrow" },
-    { name = "python-dotenv" },
-    { name = "pyyaml" },
-    { name = "torch" },
-    { name = "transformers" },
-    { name = "trl" },
-    { name = "wandb" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-flash = [
-    { name = "flash-attn" },
-]
-gemini = [
-    { name = "google-generativeai" },
-]
-quant = [
-    { name = "bitsandbytes" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "accelerate", specifier = ">=1.0" },
-    { name = "anthropic", specifier = ">=0.28" },
-    { name = "bitsandbytes", specifier = ">=0.49.2" },
-    { name = "bitsandbytes", marker = "extra == 'quant'", specifier = ">=0.43" },
-    { name = "datasets", specifier = ">=3.0" },
-    { name = "flash-attn", marker = "extra == 'flash'", specifier = ">=2.6" },
-    { name = "google-generativeai", marker = "extra == 'gemini'", specifier = ">=0.8" },
-    { name = "huggingface-hub" },
-    { name = "matplotlib", specifier = ">=3.10.9" },
-    { name = "openai", specifier = ">=1.30" },
-    { name = "pandas", specifier = ">=2.0" },
-    { name = "peft", specifier = ">=0.13" },
-    { name = "pyarrow", specifier = ">=14.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "python-dotenv", specifier = ">=1.0" },
-    { name = "pyyaml" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
-    { name = "torch", specifier = ">=2.5" },
-    { name = "transformers", specifier = ">=4.51" },
-    { name = "trl", specifier = ">=0.12,<0.20" },
-    { name = "wandb", specifier = ">=0.27.0" },
-]
-provides-extras = ["quant", "flash", "gemini", "dev"]
-
-[[package]]
 name = "einops"
 version = "0.8.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1742,6 +1678,78 @@ sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5", size = 6299353, upload-time = "2025-04-27T18:04:59.103Z" },
 ]
+
+[[package]]
+name = "timesorter"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "accelerate" },
+    { name = "anthropic" },
+    { name = "bitsandbytes" },
+    { name = "datasets" },
+    { name = "huggingface-hub" },
+    { name = "matplotlib" },
+    { name = "openai" },
+    { name = "pandas" },
+    { name = "peft" },
+    { name = "pyarrow" },
+    { name = "python-dotenv" },
+    { name = "pyyaml" },
+    { name = "torch" },
+    { name = "transformers" },
+    { name = "trl" },
+    { name = "wandb" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+flash = [
+    { name = "flash-attn" },
+]
+gemini = [
+    { name = "google-generativeai" },
+]
+quant = [
+    { name = "bitsandbytes" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "accelerate", specifier = ">=1.0" },
+    { name = "anthropic", specifier = ">=0.28" },
+    { name = "bitsandbytes", specifier = ">=0.49.2" },
+    { name = "bitsandbytes", marker = "extra == 'quant'", specifier = ">=0.43" },
+    { name = "datasets", specifier = ">=3.0" },
+    { name = "flash-attn", marker = "extra == 'flash'", specifier = ">=2.6" },
+    { name = "google-generativeai", marker = "extra == 'gemini'", specifier = ">=0.8" },
+    { name = "huggingface-hub" },
+    { name = "matplotlib", specifier = ">=3.10.9" },
+    { name = "openai", specifier = ">=1.30" },
+    { name = "pandas", specifier = ">=2.0" },
+    { name = "peft", specifier = ">=0.13" },
+    { name = "pyarrow", specifier = ">=14.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "pyyaml" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
+    { name = "torch", specifier = ">=2.5" },
+    { name = "transformers", specifier = ">=4.51" },
+    { name = "trl", specifier = ">=0.12,<0.20" },
+    { name = "wandb", specifier = ">=0.27.0" },
+]
+provides-extras = ["quant", "flash", "gemini", "dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.0.3" }]
 
 [[package]]
 name = "tokenizers"

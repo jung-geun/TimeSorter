@@ -23,3 +23,6 @@ outputs/.api_cache*.jsonl
 
 # HuggingFace 모델 로컬 캐시 (make download-models 으로 재생성)
 models/
+
+# 학습된 어댑터 및 체크포인트 (재학습으로 재생성)
+outputs/

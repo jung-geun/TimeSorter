@@ -1,11 +1,11 @@
-"""src/drl/data/schema.py 단위 테스트."""
+"""src/timesorter/data/schema.py 단위 테스트."""
 from __future__ import annotations
 
 import json
 
 import pytest
 
-from drl.data.schema import (
+from timesorter.data.schema import (
     ScheduleResponse,
     format_for_sft,
     parse_lenient,

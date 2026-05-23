@@ -50,7 +50,7 @@ async def process_scenario(
     ckpt_f,
     ckpt_lock: asyncio.Lock,
 ) -> list[dict]:
-    from drl.data.augment import async_generate_four_candidates, async_judge_pair
+    from timesorter.data.augment import async_generate_four_candidates, async_judge_pair
 
     try:
         c1, c2, c3, c4 = await async_generate_four_candidates(prompt, persona)

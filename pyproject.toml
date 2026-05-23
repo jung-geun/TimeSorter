@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "drl"
+name = "timesorter"
 version = "0.1.0"
 description = "Qwen3 DPO fine-tuning for Korean preference data"
 requires-python = ">=3.11,<3.12"
@@ -36,7 +36,7 @@ gemini = ["google-generativeai>=0.8"]
 dev    = ["pytest>=8.0", "ruff>=0.9"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/drl"]
+packages = ["src/timesorter"]
 
 [tool.ruff]
 line-length = 100
@@ -44,3 +44,8 @@ target-version = "py311"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

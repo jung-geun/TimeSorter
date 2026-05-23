@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import torch
 
-from drl.device import DeviceProfile, detect
+from timesorter.device import DeviceProfile, detect
 
 
 def test_detect_returns_profile():

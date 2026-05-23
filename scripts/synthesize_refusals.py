@@ -28,7 +28,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from drl.data.schema import (
+from timesorter.data.schema import (
     ScheduleResponse,
     parse_lenient,
 )

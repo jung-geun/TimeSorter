@@ -1,4 +1,4 @@
-# drl — 한국어 할 일 우선순위 정렬 비서
+# TimeSorter — 한국어 할 일 우선순위 정렬 비서
 
 > **Qwen3.5-4B / 9B**를 한국어 일정 관리 태스크에 특화 파인튜닝하는 SFT → DPO 2단계 파이프라인.
 > 사용자가 제출한 할 일 목록을 **긴급도·중요도·의존성·시간 제약** 4축으로 채점해 우선순위를 결정합니다.
@@ -200,7 +200,7 @@ make infer ADAPTER=outputs/sft_mac \
   PROMPT="보고서 마감(내일), 팀 회의(오후 2시), 메일 답장 3건"
 
 # v2 JSON 4축 점수
-uv run python -m drl.infer --adapter outputs/sft_mac_v2 \
+uv run python -m timesorter.infer --adapter outputs/sft_mac_v2 \
   --schema-version v2 --persona "직장인" \
   --prompt "보고서 마감(내일), 팀 회의(오후 2시), 메일 답장 3건"
 
@@ -223,7 +223,7 @@ make validate   # GPT 판사 교차 검증
 ## 모듈 구조
 
 ```
-src/drl/
+src/timesorter/
 ├── device.py        — VRAM 감지 + auto_batch_config
 ├── config.py        — YAML → RunConfig
 ├── model.py         — Qwen3.5 로딩 + LoRA / DDP 대응

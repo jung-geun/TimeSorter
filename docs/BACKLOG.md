@@ -4,7 +4,7 @@
 
 ### v0.1 — 기반 구축
 - [x] Qwen3.5-4B 기반 SFT/DPO 학습 파이프라인 설계
-- [x] `src/drl/` 모듈 구조 (config, model, data, device, train_sft, train_dpo, infer)
+- [x] `src/timesorter/` 모듈 구조 (config, model, data, device, train_sft, train_dpo, infer)
 - [x] NF4 QLoRA 4-bit 양자화 적용 (12GB VRAM RTX 환경)
 - [x] flash-attn 2.7.4 Docker 환경 구축 (`timesorter:cu124`)
 

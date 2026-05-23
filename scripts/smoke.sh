@@ -10,7 +10,7 @@ export TOKENIZERS_PARALLELISM=false
 
 echo "=== 스모크 테스트 (Qwen3-1.7B, MPS, 2 steps) ==="
 
-uv run python -m drl.train_dpo --config configs/mac_smoke.yaml
+uv run python -m timesorter.train_dpo --config configs/mac_smoke.yaml
 
 echo ""
 echo "=== 완료 ==="

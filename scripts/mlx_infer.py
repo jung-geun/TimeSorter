@@ -28,7 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from drl.data.schema import (
+from timesorter.data.schema import (
     SCHEDULER_SYSTEM_PROMPT_V2,
     parse_or_repair,
     render_system_prompt,

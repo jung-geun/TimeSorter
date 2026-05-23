@@ -29,11 +29,11 @@ smoke:
 
 # Stage 1: 스케줄 SFT
 sft:
-	uv run python -m drl.train_sft --config configs/sft_scheduler.yaml
+	uv run python -m timesorter.train_sft --config configs/sft_scheduler.yaml
 
 sft-smoke:
 	PYTORCH_ENABLE_MPS_FALLBACK=1 TOKENIZERS_PARALLELISM=false \
-	uv run python -m drl.train_sft --config configs/sft_mac_smoke.yaml
+	uv run python -m timesorter.train_sft --config configs/sft_mac_smoke.yaml
 
 # Stage 2: 데이터 생성 (dry-run은 LIMIT=5 make gen-data)
 gen-schedule:
@@ -51,20 +51,20 @@ gen-data-v2:
 
 # Stage 3: DPO (SFT 체크포인트 위에서)
 dpo-final:
-	uv run python -m drl.train_dpo --config configs/dpo_final.yaml
+	uv run python -m timesorter.train_dpo --config configs/dpo_final.yaml
 
 # DGX Spark (120GB) 전용 파이프라인
 sft-dgx-4b:
-	uv run python -m drl.train_sft --config configs/sft_dgx_4b.yaml
+	uv run python -m timesorter.train_sft --config configs/sft_dgx_4b.yaml
 
 sft-dgx-8b:
-	uv run python -m drl.train_sft --config configs/sft_dgx_8b.yaml
+	uv run python -m timesorter.train_sft --config configs/sft_dgx_8b.yaml
 
 dpo-dgx-4b:
-	uv run python -m drl.train_dpo --config configs/dpo_dgx_4b.yaml
+	uv run python -m timesorter.train_dpo --config configs/dpo_dgx_4b.yaml
 
 dpo-dgx-8b:
-	uv run python -m drl.train_dpo --config configs/dpo_dgx_8b.yaml
+	uv run python -m timesorter.train_dpo --config configs/dpo_dgx_8b.yaml
 
 # 전체 DGX 파이프라인 순차 실행 (4B)
 pipeline-dgx-4b: sft-dgx-4b dpo-dgx-4b
@@ -74,19 +74,19 @@ pipeline-dgx-8b: sft-dgx-8b dpo-dgx-8b
 
 # 12GB VRAM (RTX 3060/4070/4080 등) — QLoRA 4-bit, 4B 모델
 sft-rtx12g-4b:
-	uv run python -m drl.train_sft --config configs/sft_rtx12g_4b.yaml
+	uv run python -m timesorter.train_sft --config configs/sft_rtx12g_4b.yaml
 
 dpo-rtx12g-4b:
-	uv run python -m drl.train_dpo --config configs/dpo_rtx12g_4b.yaml
+	uv run python -m timesorter.train_dpo --config configs/dpo_rtx12g_4b.yaml
 
 pipeline-rtx12g-4b: sft-rtx12g-4b dpo-rtx12g-4b
 
 # v2 — JSON 스키마 + 4축 점수 학습 (데이터 준비 후 실행)
 sft-rtx12g-4b-v2:
-	uv run python -m drl.train_sft --config configs/sft_rtx12g_4b_v2.yaml
+	uv run python -m timesorter.train_sft --config configs/sft_rtx12g_4b_v2.yaml
 
 dpo-rtx12g-4b-v2:
-	uv run python -m drl.train_dpo --config configs/dpo_rtx12g_4b_v2.yaml
+	uv run python -m timesorter.train_dpo --config configs/dpo_rtx12g_4b_v2.yaml
 
 pipeline-rtx12g-4b-v2: sft-rtx12g-4b-v2 dpo-rtx12g-4b-v2
 
@@ -94,40 +94,40 @@ pipeline-rtx12g-4b-v2: sft-rtx12g-4b-v2 dpo-rtx12g-4b-v2
 # 실행 전: pip install accelerate 확인
 sft-4090-2x-4b:
 	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
-	  -m drl.train_sft --config configs/sft_4090_2x_4b.yaml
+	  -m timesorter.train_sft --config configs/sft_4090_2x_4b.yaml
 
 dpo-4090-2x-4b:
 	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
-	  -m drl.train_dpo --config configs/dpo_4090_2x_4b.yaml
+	  -m timesorter.train_dpo --config configs/dpo_4090_2x_4b.yaml
 
 pipeline-4090-2x-4b: sft-4090-2x-4b dpo-4090-2x-4b
 
 sft-4090-2x-4b-v2:
 	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
-	  -m drl.train_sft --config configs/sft_4090_2x_4b_v2.yaml
+	  -m timesorter.train_sft --config configs/sft_4090_2x_4b_v2.yaml
 
 dpo-4090-2x-4b-v2:
 	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
-	  -m drl.train_dpo --config configs/dpo_4090_2x_4b_v2.yaml
+	  -m timesorter.train_dpo --config configs/dpo_4090_2x_4b_v2.yaml
 
 pipeline-4090-2x-4b-v2: sft-4090-2x-4b-v2 dpo-4090-2x-4b-v2
 
 # 하드웨어 무관 — 실행 시점 VRAM으로 bs/grad_accum/4bit 자동 산출
-# 단일 GPU: uv run python -m drl.train_sft --config configs/sft_auto.yaml
-# 멀티 GPU: accelerate launch --config_file configs/accelerate_4090_2x.yaml -m drl.train_sft ...
+# 단일 GPU: uv run python -m timesorter.train_sft --config configs/sft_auto.yaml
+# 멀티 GPU: accelerate launch --config_file configs/accelerate_4090_2x.yaml -m timesorter.train_sft ...
 sft-auto:
-	uv run python -m drl.train_sft --config configs/sft_auto.yaml
+	uv run python -m timesorter.train_sft --config configs/sft_auto.yaml
 
 dpo-auto:
-	uv run python -m drl.train_dpo --config configs/dpo_auto.yaml
+	uv run python -m timesorter.train_dpo --config configs/dpo_auto.yaml
 
 pipeline-auto: sft-auto dpo-auto
 
 sft-auto-v2:
-	uv run python -m drl.train_sft --config configs/sft_auto_v2.yaml
+	uv run python -m timesorter.train_sft --config configs/sft_auto_v2.yaml
 
 dpo-auto-v2:
-	uv run python -m drl.train_dpo --config configs/dpo_auto_v2.yaml
+	uv run python -m timesorter.train_dpo --config configs/dpo_auto_v2.yaml
 
 pipeline-auto-v2: sft-auto-v2 dpo-auto-v2
 
@@ -140,17 +140,17 @@ dpo-docker-v2:
 # 기존 DPO (generic)
 train-mac:
 	PYTORCH_ENABLE_MPS_FALLBACK=1 TOKENIZERS_PARALLELISM=false \
-	uv run python -m drl.train_dpo --config configs/mac_train.yaml
+	uv run python -m timesorter.train_dpo --config configs/mac_train.yaml
 
 train-4b:
-	uv run python -m drl.train_dpo --config configs/dgx_4b.yaml
+	uv run python -m timesorter.train_dpo --config configs/dgx_4b.yaml
 
 train-8b:
-	uv run python -m drl.train_dpo --config configs/dgx_8b.yaml
+	uv run python -m timesorter.train_dpo --config configs/dgx_8b.yaml
 
 # 사용: make infer ADAPTER=outputs/dpo_final PROMPT="보고서 작성(내일 마감), 점심 약속, 메일 답장"
 infer:
-	uv run python -m drl.infer --adapter $(ADAPTER) --prompt "$(PROMPT)"
+	uv run python -m timesorter.infer --adapter $(ADAPTER) --prompt "$(PROMPT)"
 
 setup-mac:
 	bash scripts/setup_mac.sh
