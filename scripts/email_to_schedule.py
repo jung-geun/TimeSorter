@@ -192,11 +192,12 @@ def generate_schedule(
     create_kwargs: dict = dict(
         model=model_name,
         messages=messages,
-        max_tokens=1024,
+        max_tokens=2048,
         temperature=0.0,
     )
     if schema_version == "v2":
-        create_kwargs["extra_body"] = {"guided_json": True}
+        from timesorter.data.schema import ScheduleResponse
+        create_kwargs["extra_body"] = {"guided_json": ScheduleResponse.model_json_schema()}
 
     client = OpenAI(
         api_key="EMPTY",  # vLLM은 키 검증 없음

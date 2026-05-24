@@ -9,6 +9,9 @@
   # 기본 (gpt-5.5, outputs/schedule_result.json)
   uv run python scripts/validate_schedule.py
 
+  # 오늘 날짜 명시 (판사에게 현재 날짜 주입)
+  uv run python scripts/validate_schedule.py --today 2026-05-24
+
   # 결과 파일과 이메일 디렉토리 명시
   uv run python scripts/validate_schedule.py \\
       --result outputs/schedule_result.json \\
@@ -23,6 +26,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -36,9 +40,10 @@ load_dotenv()
 
 # ── 판사 프롬프트 ─────────────────────────────────────────────────────────────
 
-_PHASE1_SYSTEM = """당신은 스케줄 관리 전문가입니다.
+_PHASE1_SYSTEM = """당신은 스케줄 관리 전문가입니다.{today_line}
 주어진 이메일들을 꼼꼼히 읽고, 수신자가 처리해야 할 모든 행동 항목을 누락 없이 추출한 뒤
 4축 기준(긴급도·중요도·의존성·시간 제약)으로 최적 우선순위를 결정하십시오.
+이미 지난 일정(오늘 이전 고정 시각)도 추출하되, 우선순위 판단 시 이미 지난 항목임을 반영하십시오.
 
 반드시 아래 JSON 형식으로만 응답하십시오:
 {
@@ -61,8 +66,9 @@ _PHASE1_USER = """페르소나: {persona}
 위 이메일들에서 수신자({persona})가 처리해야 할 모든 행동 항목과 최적 우선순위를 JSON으로 반환하세요."""
 
 
-_PHASE2_SYSTEM = """당신은 AI 스케줄링 모델의 출력을 평가하는 전문 심사위원입니다.
+_PHASE2_SYSTEM = """당신은 AI 스케줄링 모델의 출력을 평가하는 전문 심사위원입니다.{today_line}
 기준 정답(판사 생성)과 모델 출력을 비교하여 객관적이고 엄정하게 평가하십시오.
+날짜 관련 판단 시 오늘 날짜를 기준으로 상대적 임박도를 평가하고, 이미 지난 일정을 고려하십시오.
 
 채점 기준:
 - task_coverage (1-5): 태스크 추출 완성도 (누락·환각 여부)
@@ -194,10 +200,13 @@ def phase1_generate_reference(
     persona: str,
     client: OpenAI,
     model: str,
+    today: str = "",
 ) -> dict:
+    today_line = f"\n오늘 날짜는 {today}입니다." if today else ""
+    system = _PHASE1_SYSTEM.replace("{today_line}", today_line)
     emails_block = _build_emails_block(emails)
     user_msg = _PHASE1_USER.format(persona=persona, emails_block=emails_block)
-    return _call_judge(client, model, _PHASE1_SYSTEM, user_msg, "Phase 1 독립 생성")
+    return _call_judge(client, model, system, user_msg, "Phase 1 독립 생성")
 
 
 # ── Phase 2 ───────────────────────────────────────────────────────────────────
@@ -210,6 +219,7 @@ def phase2_evaluate(
     model_schedule: str,
     client: OpenAI,
     model: str,
+    today: str = "",
 ) -> dict:
     # 이메일 요약 (제목만)
     emails_summary = "\n".join(
@@ -239,6 +249,9 @@ def phase2_evaluate(
 
     model_tasks_block = "\n".join(f"- {t}" for t in model_tasks)
 
+    today_line = f"\n오늘 날짜는 {today}입니다." if today else ""
+    system = _PHASE2_SYSTEM.replace("{today_line}", today_line)
+
     user_msg = _PHASE2_USER.format(
         persona=persona,
         emails_block=emails_summary,
@@ -246,7 +259,7 @@ def phase2_evaluate(
         model_tasks_block=model_tasks_block,
         model_schedule=model_schedule[:2000],  # 너무 길면 잘라냄
     )
-    return _call_judge(client, model, _PHASE2_SYSTEM, user_msg, "Phase 2 비교 평가")
+    return _call_judge(client, model, system, user_msg, "Phase 2 비교 평가")
 
 
 # ── 보고서 출력 ───────────────────────────────────────────────────────────────
@@ -361,6 +374,10 @@ if __name__ == "__main__":
         "--out", default=None,
         help="검증 결과 JSON 저장 경로"
     )
+    parser.add_argument(
+        "--today", default=datetime.date.today().isoformat(),
+        help="오늘 날짜 (판사에게 주입, 기본: 실행일 자동)"
+    )
     args = parser.parse_args()
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -391,10 +408,11 @@ if __name__ == "__main__":
     print(f"  판사 모델  : {args.judge}")
     print(f"  이메일 수  : {len(emails)}건")
     print(f"  모델 태스크: {len(model_tasks)}개")
-    print(f"  페르소나   : {persona}\n")
+    print(f"  페르소나   : {persona}")
+    print(f"  오늘 날짜  : {args.today}\n")
 
     # Phase 1
-    reference = phase1_generate_reference(emails, persona, client, args.judge)
+    reference = phase1_generate_reference(emails, persona, client, args.judge, today=args.today)
     ref_tasks = reference.get("tasks", [])
     print(f"  → 판사 기준 태스크: {len(ref_tasks)}개 추출됨")
 
@@ -407,6 +425,7 @@ if __name__ == "__main__":
         model_schedule=model_schedule,
         client=client,
         model=args.judge,
+        today=args.today,
     )
 
     verdict = evaluation.get("verdict", "?")
