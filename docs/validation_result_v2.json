@@ -1,0 +1,134 @@
+{
+  "judge_model": "gpt-4o",
+  "persona": "직장인",
+  "email_count": 5,
+  "model_task_count": 6,
+  "reference": {
+    "tasks": [
+      {
+        "id": 1,
+        "text": "Q2 실적 보고서 초안 제출 (마감: 5/24 오후 5시)",
+        "source_email": "01_project_deadline.txt"
+      },
+      {
+        "id": 2,
+        "text": "(주)그린테크 파트너십 미팅 참석 및 자료 준비 (마감: 5/23 오후 2시)",
+        "source_email": "02_meeting_request.txt"
+      },
+      {
+        "id": 3,
+        "text": "클라우드 인프라 서비스 계약서 검토 및 회신 (마감: 5/26 오전)",
+        "source_email": "03_contract_review.txt"
+      },
+      {
+        "id": 4,
+        "text": "팀 점심 회식 참석 여부 확인 및 회신 (마감: 5/23 오후 12시)",
+        "source_email": "04_team_lunch.txt"
+      },
+      {
+        "id": 5,
+        "text": "PR #847 코드 리뷰 (마감 권고: 5/24 오전)",
+        "source_email": "05_code_review.txt"
+      }
+    ],
+    "priority_order": [
+      2,
+      1,
+      5,
+      4,
+      3
+    ],
+    "priority_reasoning": [
+      {
+        "rank": 1,
+        "task_id": 2,
+        "reason": "오늘 오후 2시에 시작하는 미팅으로 긴급성과 중요도가 모두 높음."
+      },
+      {
+        "rank": 2,
+        "task_id": 1,
+        "reason": "내일 오후 5시 마감인 실적 보고서는 높은 중요도를 가짐."
+      },
+      {
+        "rank": 3,
+        "task_id": 5,
+        "reason": "코드 리뷰는 내일 오전까지 권장되지만, 팀장 에스컬레이션을 피하기 위해 조속한 처리가 필요함."
+      },
+      {
+        "rank": 4,
+        "task_id": 4,
+        "reason": "점심 회식 참석 여부는 기한이 임박하였으나 긴급하지 않으며, 간단히 회신하면 됨."
+      },
+      {
+        "rank": 5,
+        "task_id": 3,
+        "reason": "계약서 검토는 상대적으로 긴 기한이 있어서 우선순위가 낮음."
+      }
+    ]
+  },
+  "evaluation": {
+    "task_coverage": {
+      "score": 4,
+      "found_correctly": [
+        "Q2 실적 보고서 초안 제출",
+        "그린테크 파트너십 미팅 참석",
+        "팀 점심 회식 참석",
+        "PR #847 코드 리뷰",
+        "클라우드 인프라 계약서 검토"
+      ],
+      "missed_by_model": [],
+      "hallucinated_by_model": [
+        "미팅 전 회사 소개 자료 및 협업 제안서 검토 의견 준비"
+      ]
+    },
+    "priority_accuracy": {
+      "score": 3,
+      "correct_items": [
+        "그린테크 파트너십 미팅 참석"
+      ],
+      "wrong_items": [
+        {
+          "task": "팀 점심 회식 참석",
+          "model_rank": 2,
+          "expected_rank": 4,
+          "reason": "모델은 점심 회식의 시간 제약을 중요하게 보아 높은 우선순위를 부여했으나, 업무 상 중요도가 낮아 덜 시급함."
+        },
+        {
+          "task": "Q2 실적 보고서 초안 제출",
+          "model_rank": 3,
+          "expected_rank": 2,
+          "reason": "실적 보고서는 높은 중요도의 업무로, 팀 점심 회식보다 우선되어야 함."
+        },
+        {
+          "task": "PR #847 코드 리뷰",
+          "model_rank": 4,
+          "expected_rank": 3,
+          "reason": "코드 리뷰는 보고서 제출보다 시급한 처리 필요성이 있으므로 더 높은 우선순위에 위치해야 함."
+        }
+      ]
+    },
+    "reasoning_quality": {
+      "score": 3,
+      "strengths": [
+        "미팅과 시간 제약의 중요성을 잘 반영하여 높은 우선순위를 부여함."
+      ],
+      "weaknesses": [
+        "중요도 평가 시 시간이 아닌 업무 자체의 중요성을 충분히 고려하지 않음.",
+        "사전 준비 작업과 관련된 환각 태스크 생성"
+      ]
+    },
+    "score_consistency": {
+      "score": 3,
+      "has_axis_scores": true,
+      "inconsistencies": [
+        "팀 점심 회식의 높은 시간 제약에 비해 낮은 중요도 점수를 반영하지 않음",
+        "Q2 실적 보고서의 중요도가 상대적으로 충분히 반영되지 않음"
+      ]
+    },
+    "overall": 3,
+    "verdict": "PARTIAL",
+    "summary": "모델은 대부분의 태스크를 잘 식별했으나, 점심 회식과 보고서 제출의 우선순위 판단에 오류가 있었습니다. 그리고 중요도를 판단할 때 일 관련 측면을 충분히 고려하지 않은 점이 아쉽습니다. 또한, 사전에 준비해야 할 추가 태스크를 환각한 점이 감점 요인입니다."
+  },
+  "verdict": "PARTIAL",
+  "overall_score": 3
+}
