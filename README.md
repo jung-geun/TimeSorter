@@ -116,8 +116,21 @@
 |------|-----------|---------|--------|-----------|------|
 | SFT v1 | `outputs/sft_rtx12g_4b` | scheduler_ko_combined | 5,999 | — | 자유 텍스트 출력 |
 | DPO v1 | `outputs/dpo_rtx12g_4b` | dpo_pairs_v1 | ~5K쌍 | — | v1 어댑터 위 선호도 학습 |
-| **SFT v2** | **`outputs/sft_rtx12g_4b_v2`** | **scheduler_v2_combined** | **10,958** | **—** | **4축 JSON 출력** |
-| **DPO v2** | **`outputs/dpo_rtx12g_4b_v2`** | **dpo_pairs_v2** | **15,280쌍** | **0.0043** | **현재 최신 어댑터** |
+| SFT v2 | `outputs/sft_rtx12g_4b_v2` | scheduler_v2_combined | 10,958 | — | 4축 JSON 출력 (가중치 미보존) |
+| DPO v2 | `outputs/dpo_rtx12g_4b_v2` | dpo_pairs_v2 | 15,280쌍 | 0.0043 | v2 최종 |
+| **SFT v3** | **`outputs/sft_rtx12g_4b_v3`** | **scheduler_v3_combined** | **5,678** | **0.328** | **dpo_v2에서 이어 학습, today 주입** |
+| **DPO v3** | **`outputs/dpo_rtx12g_4b_v3`** | **dpo_pairs_v3** | **3,722쌍** | **0.635** | **hard negative, 현재 최신 어댑터** |
+
+#### DPO v3 학습 지표 (116 steps, 1 epoch, 2026-06-10)
+
+| 지표 | 최종 |
+|------|------|
+| train_loss | 0.635 |
+| rewards/accuracies | 0.876 |
+| rewards/margins | 0.164 |
+
+> v2(margins 17.7, accuracies 1.0)의 과분리와 달리 margins가 낮게 유지됨 —
+> rejected가 chosen과 형식이 동일하고 내용만 틀린 hard negative라서 실제 실패 모드를 벌점한다.
 
 #### DPO v2 학습 지표 (956 steps, 2 epoch)
 
@@ -142,21 +155,38 @@
 
 ---
 
-## 검증 결과 및 현재 문제점
+## 검증 결과
 
-### gpt-5.5 교차 검증 결과 (2026-05-24 기준)
+### gpt-5.5 교차 검증 결과 (오늘=2026-05-24 주입)
 
 | 어댑터 | 태스크 커버리지 | 우선순위 정확도 | 추론 품질 | 4축 일관성 | 종합 | 판정 |
 |--------|--------------|--------------|---------|-----------|------|------|
 | SFT v1 | 3/5 | 2/5 | 2/5 | — | 2/5 | ❌ FAIL |
 | DPO v1 | 3/5 | 2/5 | 2/5 | — | 2/5 | ❌ FAIL |
 | SFT v2 | 4/5 | 2/5 | 2/5 | 2/5 | 2/5 | ❌ FAIL |
-| **DPO v2** | **4/5** | **2/5** | **2/5** | **2/5** | **2/5** | **❌ FAIL** |
+| DPO v2 | 4/5 | 2/5 | 2/5 | 2/5 | 2/5 | ❌ FAIL |
+| **SFT v3 + rerank** | **3/5** | **3/5** | **2/5** | **3/5** | **3/5** | **🔶 PARTIAL** |
+| **DPO v3 + rerank** | **3/5** | **2/5** | **3/5** | **2/5** | **3/5** | **🔶 PARTIAL** |
 
 > 검증 방법: Phase 1에서 gpt-5.5가 원본 이메일을 독립 분석해 기준 답을 생성하고,
 > Phase 2에서 모델 출력과 비교 채점. `--today` 파라미터로 현재 날짜를 판사에게 주입.
+> `+rerank` = `timesorter/rank.py` ScoreRanker로 4축 점수 가중합 기준 priority_order 재계산.
 
-### 확인된 문제점 3가지
+### v3에서 해결된 문제 (v2 검증의 3대 실패 모드)
+
+1. **날짜 혼동 해결**: 시스템 프롬프트에 오늘 날짜(+요일) 고정 주입 + 지난 일정 처리 규칙.
+   지난 5/23 일정을 urgency=1로 강등하고 "이미 지난 일정" 사유와 함께 최하위 배치 (v2는 urgency=5, 3위).
+2. **오전/오후 마감 구분**: 같은 날 PR(오전)과 보고서(17:00)를 시각 기준으로 차등 채점.
+3. **의존성 체인 연속 배치**: 작성→업로드→발송을 선행조건 순서대로 연속 배치 (v2는 1·7·8위 분산).
+4. **점수↔순서 모순 해소**: DPO v3 학습(order_score_mismatch negative) + ScoreRanker 후처리 이중 안전장치.
+
+### 남은 한계 (v4 후보)
+
+- PR처럼 "오전 마감 + 에스컬레이션" 업무의 urgency를 4로 과소평가 (가이드는 5) → 판사 기대 1위와 불일치
+- 이메일→태스크 추출 단계의 정보 손실이 커버리지 점수를 제한 (미팅 참석 vs 회신 혼동 등)
+- 지난 일정의 reason 표현이 어색함 ("오늘 마감이지만 이미 지난" — "어제"로 표현해야 자연스러움)
+
+### (기록) v2 검증에서 확인됐던 문제점 3가지 — v3에서 대응 완료
 
 #### 1. 날짜 혼동 — 가장 심각
 
@@ -239,10 +269,33 @@ rejected: 1) 계약서 작성(dep=3) 5) 법무팀 검토(dep=1) 9) 서명(dep=1)
 
 ### 미완 / 다음 작업
 
-- [ ] `gen_schedule_v2.py --days-offset` 구현 및 today≠email_date 케이스 2K 생성
-- [ ] 오전/오후 세분화 urgency 채점 기준 반영 후 DPO 쌍 재생성
+- [x] today≠email_date 케이스 합성 — `gen_schedule_v3.py` 시나리오 골격 방식으로 구현 (2026-06-10)
+- [x] 오전/오후 세분화 urgency 채점 기준 반영 후 DPO 쌍 재생성 — `gen_preference_pairs_v3.py`
+- [x] 점수↔순서 결정적 재정렬 — `timesorter/rank.py` (PPT ScoreRanker), `--rerank`
+- [x] 사용자 피드백 → DPO 쌍 변환기 — `timesorter/feedback.py` (PPT STEP 5-6 미구현 구간)
+- [ ] PR류 "오전 마감+에스컬레이션" urgency=5 케이스 보강 (v4)
+- [ ] 추출 단계 커버리지 개선 — 미팅 참석/회신 분리, 원문 세부 항목 보존 (v4)
+- [ ] 지난 일정 reason 자연화 ("어제 마감" 표현) (v4)
 - [ ] DGX 환경에서 9B 모델 학습
 - [ ] `v0.5-baseline` git tag 추가 (v1 어댑터 보존 포인트)
+
+### v3 사용법
+
+```bash
+# v3 파이프라인 전체 (데이터 생성 → SFT → DPO)
+make gen-data-v3 && make pipeline-rtx12g-4b-v3
+
+# 서빙 (dpo_v3)
+make serve-docker ADAPTER=outputs/dpo_rtx12g_4b_v3 LORA_NAME=scheduler MAX_MODEL_LEN=4096
+
+# 이메일 → 스케줄 (오늘 날짜 주입 + 점수 기반 재정렬)
+uv run python scripts/email_to_schedule.py --schema-version v3 \
+    --today 2026-05-24 --rerank --out outputs/schedule_result_dpo_v3.json
+
+# gpt-5.5 판사 검증
+uv run python scripts/validate_schedule.py \
+    --result outputs/schedule_result_dpo_v3.json --today 2026-05-24
+```
 
 ---
 

@@ -5,7 +5,8 @@ sft_adapter: outputs/sft_rtx12g_4b_v3
 dataset: data/dpo_pairs_v3.parquet
 output_dir: outputs/dpo_rtx12g_4b_v3
 max_samples: null
-max_prompt_len: 1024          # v3 system prompt(날짜 규칙 포함)가 v2보다 길다
+max_prompt_len: 800           # 응답 길이 캡 = max_length - 이 값. 1024면 캡 512가 되어
+                              # 긴 스케줄링 JSON(hard negative 핵심)이 40% 탈락 — 800으로 완화
 schema_version: "v3"
 wandb_run_name: dpo_rtx12g_4b_v3
 
