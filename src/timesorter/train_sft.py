@@ -66,6 +66,7 @@ def main(config_path: str) -> None:
         lora_dropout=cfg.lora.dropout,
         use_4bit=cfg.lora.use_4bit,
         gradient_checkpointing=cfg.training_args.get("gradient_checkpointing", False),
+        sft_adapter_path=cfg.sft_adapter,
     )
 
     parquet_exists = cfg.dataset.endswith(".parquet") and Path(cfg.dataset).exists()

@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING
 
 from datasets import Dataset
 
-from .schema import SCHEDULER_SYSTEM_PROMPT_V1, SCHEDULER_SYSTEM_PROMPT_V2, render_system_prompt
+from .schema import (
+    SCHEDULER_SYSTEM_PROMPT_V1,
+    render_system_prompt,
+    system_prompt_for,
+)
 
 if TYPE_CHECKING:
     pass
@@ -26,13 +30,12 @@ def _to_chatml(
     response: str,
     persona: str = "직장인",
     schema_version: str = "v1",
+    today: str = "",
 ) -> dict:
-    system_tmpl = (
-        SCHEDULER_SYSTEM_PROMPT_V2 if schema_version == "v2" else SCHEDULER_SYSTEM_PROMPT_V1
-    )
+    system_tmpl = system_prompt_for(schema_version)
     return {
         "messages": [
-            {"role": "system", "content": render_system_prompt(system_tmpl, persona)},
+            {"role": "system", "content": render_system_prompt(system_tmpl, persona, today=today)},
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": response},
         ]
@@ -82,7 +85,8 @@ def load_scheduler_dataset(
         df = pd.read_parquet(parquet_path)
         for _, r in df.iterrows():
             persona = r.get("persona", "직장인")
-            rows.append(_to_chatml(str(r["prompt"]), str(r["chosen"]), persona, schema_version))
+            today = str(r.get("today", "") or "")
+            rows.append(_to_chatml(str(r["prompt"]), str(r["chosen"]), persona, schema_version, today))
         print(f"[scheduler] parquet 로드: {len(rows)}개 ({parquet_path})")
 
     # parquet가 없거나 비어있으면 ko_Ultrafeedback으로 자동 fallback

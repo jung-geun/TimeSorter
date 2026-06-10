@@ -8,11 +8,10 @@ from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .data.schema import (
-    SCHEDULER_SYSTEM_PROMPT_V1,
-    SCHEDULER_SYSTEM_PROMPT_V2,
     parse_or_repair,
     render_system_prompt,
     response_to_text,
+    system_prompt_for,
 )
 from .device import detect
 
@@ -24,6 +23,7 @@ def generate(
     thinking: bool = False,
     persona: str = "직장인",
     schema_version: str = "v1",
+    today: str = "",
 ) -> str:
     profile = detect()
     base_model_name = _read_base_model(adapter_path)
@@ -44,11 +44,9 @@ def generate(
     model = PeftModel.from_pretrained(base, adapter_path)
     model.train(False)  # inference mode (no dropout / batch-norm tracking)
 
-    system_tmpl = (
-        SCHEDULER_SYSTEM_PROMPT_V2 if schema_version == "v2" else SCHEDULER_SYSTEM_PROMPT_V1
-    )
+    system_tmpl = system_prompt_for(schema_version)
     messages = [
-        {"role": "system", "content": render_system_prompt(system_tmpl, persona)},
+        {"role": "system", "content": render_system_prompt(system_tmpl, persona, today=today)},
         {"role": "user", "content": prompt},
     ]
     # enable_thinking=False: Qwen3 thinking mode 비활성화 (빠른 직접 응답)
@@ -73,7 +71,7 @@ def generate(
     new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
     raw = tokenizer.decode(new_tokens, skip_special_tokens=True)
 
-    if schema_version == "v2":
+    if schema_version in ("v2", "v3"):
         resp = parse_or_repair(raw)
         return response_to_text(resp)
     return raw
@@ -91,7 +89,8 @@ if __name__ == "__main__":
     parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--thinking", action="store_true", help="Qwen3 thinking mode 활성화")
     parser.add_argument("--persona", default="직장인")
-    parser.add_argument("--schema-version", default="v1", choices=["v1", "v2"])
+    parser.add_argument("--schema-version", default="v1", choices=["v1", "v2", "v3"])
+    parser.add_argument("--today", default="", help="오늘 날짜 (YYYY-MM-DD, v3 system prompt 주입)")
     args = parser.parse_args()
     print(generate(args.adapter, args.prompt, args.max_new_tokens, args.thinking,
-                   args.persona, args.schema_version))
+                   args.persona, args.schema_version, args.today))

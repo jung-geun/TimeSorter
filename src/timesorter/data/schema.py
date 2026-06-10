@@ -44,9 +44,68 @@ def render_system_prompt_v2(persona: str) -> str:
     return SCHEDULER_SYSTEM_PROMPT_V2.replace("<<PERSONA>>", persona)
 
 
-def render_system_prompt(tmpl: str, persona: str) -> str:
-    """V1/V2 공통 플레이스홀더 치환. <<PERSONA>> → persona, {persona} → persona."""
-    return tmpl.replace("<<PERSONA>>", persona).replace("{persona}", persona)
+# v3 — v2 스키마 동일, 오늘 날짜 주입 + 채점 가이드 강화.
+# <<TODAY>> 예: "2026-05-24 (일요일)" — format_today() 사용.
+SCHEDULER_SYSTEM_PROMPT_V3 = """\
+당신은 <<PERSONA>>를 위한 우선순위 정렬 비서입니다. 오늘은 <<TODAY>>입니다.
+입력으로 받은 할 일 목록을 4축(긴급도·중요도·의존성·시간 제약) 기준으로 1-5점 정수로 채점하고, 종합 우선순위를 결정해 아래 JSON 스키마로만 응답하세요. JSON 외 어떤 텍스트도 포함하지 마세요.
+입력이 할 일 목록이 아니면 "tasks":[] 및 "refusal_reason"을 채우세요.
+
+채점 가이드:
+- urgency: 마감/시작 임박도 (5=오늘 마감, 1=마감 없음). 같은 날 마감이면 시각이 이를수록 높음(오전 마감=5, 오후 마감=4, 저녁/당일 중 마감=3).
+- importance: 페르소나 목표에 미치는 영향 (5=결정적, 1=옵션). 미이행 시 불이익(에스컬레이션·위약금·고객 클레임·법적 기한)이 명시되면 4-5로 상향.
+- dependency: 후속 작업의 선행/블로킹 정도 (5=다수 후속의 입력, 1=독립).
+- time_constraint: 고정 시각 강도 (5=시각 고정, 1=언제든 가능).
+
+날짜 규칙:
+- 모든 날짜·시각은 오늘(<<TODAY>>)을 기준으로 해석하세요. "내일", "모레", "다음 주" 등 상대 표현도 오늘 기준으로 환산하세요.
+- 오늘 이전에 이미 지난 고정 일정은 urgency=1, time_constraint=1로 낮추고 우선순위 최하위에 배치하며 reason에 이미 지난 일정임을 명시하세요. 단, 그에 대한 후속 조치(사과·일정 재조정 연락 등)는 별개 태스크로서 임박도대로 채점하세요.
+
+의존성 규칙:
+- 선후관계로 묶인 작업(예: 작성→검토→발송)은 각 단계에 dependency 4-5를 부여하고, priority_order에서 선행 단계부터 연속으로 배치하세요.
+
+출력 스키마:
+{
+  "tasks": [{"id": 1, "text": "원문 그대로의 할 일"}],
+  "priority_order": [1, 3, 2],
+  "scores": [
+    {"task_id": 1, "urgency": 1-5, "importance": 1-5, "dependency": 1-5, "time_constraint": 1-5, "reason": "한 문장 근거"}
+  ],
+  "refusal_reason": "<도메인 무관 입력 시에만>"
+}\
+"""
+
+_WEEKDAYS_KO = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+
+
+def format_today(date_str: str) -> str:
+    """ISO 날짜 문자열 → '2026-05-24 (일요일)' 형식. 파싱 실패 시 원문 반환."""
+    import datetime
+    try:
+        d = datetime.date.fromisoformat(date_str.strip()[:10])
+    except ValueError:
+        return date_str
+    return f"{d.isoformat()} ({_WEEKDAYS_KO[d.weekday()]})"
+
+
+def render_system_prompt(tmpl: str, persona: str, today: str = "") -> str:
+    """V1/V2/V3 공통 플레이스홀더 치환.
+
+    <<PERSONA>>/{persona} → persona, <<TODAY>> → format_today(today).
+    """
+    out = tmpl.replace("<<PERSONA>>", persona).replace("{persona}", persona)
+    if "<<TODAY>>" in out:
+        out = out.replace("<<TODAY>>", format_today(today) if today else "날짜 미상")
+    return out
+
+
+def system_prompt_for(schema_version: str) -> str:
+    """schema_version → system prompt 템플릿."""
+    return {
+        "v1": SCHEDULER_SYSTEM_PROMPT_V1,
+        "v2": SCHEDULER_SYSTEM_PROMPT_V2,
+        "v3": SCHEDULER_SYSTEM_PROMPT_V3,
+    }[schema_version]
 
 # v1 호환 — 자유 텍스트 형식 (v1 어댑터에 사용)
 SCHEDULER_SYSTEM_PROMPT_V1 = (

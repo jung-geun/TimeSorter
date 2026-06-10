@@ -90,6 +90,20 @@ dpo-rtx12g-4b-v2:
 
 pipeline-rtx12g-4b-v2: sft-rtx12g-4b-v2 dpo-rtx12g-4b-v2
 
+# v3 — 날짜 추론(today 주입)·마감 세분화·의존성·리스크 강화
+gen-data-v3:
+	uv run python scripts/gen_schedule_v3.py --total 2000
+	uv run python scripts/build_v3_sft_dataset.py
+	uv run python scripts/gen_preference_pairs_v3.py --replay-v2 3000 --verify
+
+sft-rtx12g-4b-v3:
+	uv run python -m timesorter.train_sft --config configs/sft_rtx12g_4b_v3.yaml
+
+dpo-rtx12g-4b-v3:
+	uv run python -m timesorter.train_dpo --config configs/dpo_rtx12g_4b_v3.yaml
+
+pipeline-rtx12g-4b-v3: sft-rtx12g-4b-v3 dpo-rtx12g-4b-v3
+
 # RTX 4090 × 2 (24GB × 2) — bf16 LoRA, DDP 2-GPU
 # 실행 전: pip install accelerate 확인
 sft-4090-2x-4b:

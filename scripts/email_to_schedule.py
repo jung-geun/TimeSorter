@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import email
 import json
 import os
@@ -40,11 +41,10 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from timesorter.data.schema import (
-    SCHEDULER_SYSTEM_PROMPT_V1,
-    SCHEDULER_SYSTEM_PROMPT_V2,
     parse_or_repair,
     render_system_prompt,
     response_to_text,
+    system_prompt_for,
 )
 
 load_dotenv()
@@ -174,6 +174,8 @@ def generate_schedule(
     server_url: str,
     model_name: str,
     schema_version: str = "v1",
+    today: str = "",
+    rerank_scores: bool = False,
 ) -> str:
     task_lines = "\n".join(f"- {t}" for t in tasks)
     user_content = _SCHEDULE_PROMPT_TEMPLATE.format(
@@ -181,11 +183,9 @@ def generate_schedule(
         task_lines=task_lines,
     )
 
-    system_tmpl = (
-        SCHEDULER_SYSTEM_PROMPT_V2 if schema_version == "v2" else SCHEDULER_SYSTEM_PROMPT_V1
-    )
+    system_tmpl = system_prompt_for(schema_version)
     messages = [
-        {"role": "system", "content": render_system_prompt(system_tmpl, persona)},
+        {"role": "system", "content": render_system_prompt(system_tmpl, persona, today=today)},
         {"role": "user", "content": user_content},
     ]
 
@@ -195,7 +195,7 @@ def generate_schedule(
         max_tokens=2048,
         temperature=0.0,
     )
-    if schema_version == "v2":
+    if schema_version in ("v2", "v3"):
         from timesorter.data.schema import ScheduleResponse
         create_kwargs["extra_body"] = {"guided_json": ScheduleResponse.model_json_schema()}
 
@@ -206,8 +206,14 @@ def generate_schedule(
     resp = client.chat.completions.create(**create_kwargs)
     raw = resp.choices[0].message.content.strip()
 
-    if schema_version == "v2":
+    if schema_version in ("v2", "v3"):
         parsed = parse_or_repair(raw)
+        if rerank_scores:
+            from timesorter.rank import order_consistency, rerank
+            consistency = order_consistency(parsed)
+            if consistency < 1.0:
+                print(f"  [rerank] score↔order 일치율 {consistency:.0%} → 점수 기반 재정렬 적용")
+            parsed = rerank(parsed)
         return response_to_text(parsed)
     return raw
 
@@ -222,6 +228,8 @@ def run_pipeline(
     extract_only: bool,
     openai_client: OpenAI,
     schema_version: str = "v1",
+    today: str = "",
+    rerank_scores: bool = False,
     verbose: bool = True,
 ) -> ScheduleResult:
     email_files = sorted(
@@ -272,7 +280,7 @@ def run_pipeline(
 
     # Step 3: vLLM으로 스케줄 우선순위 생성
     print(f"[스케줄링] {server_url} ({model_name}) 호출 중...")
-    schedule = generate_schedule(all_tasks, persona, server_url, model_name, schema_version)
+    schedule = generate_schedule(all_tasks, persona, server_url, model_name, schema_version, today, rerank_scores)
 
     print(f"\n{'='*60}")
     print("  우선순위 스케줄 결과")
@@ -316,7 +324,15 @@ if __name__ == "__main__":
         help="vLLM 서버 대기 없이 바로 시도"
     )
     parser.add_argument(
-        "--schema-version", default=DEFAULT_SCHEMA_VERSION, choices=["v1", "v2"],
+        "--rerank", action="store_true",
+        help="모델 4축 점수 가중합으로 priority_order 재계산 (score↔order 일관성 보장)"
+    )
+    parser.add_argument(
+        "--today", default=datetime.date.today().isoformat(),
+        help="오늘 날짜 (v3 system prompt에 주입, 기본: 실행일)"
+    )
+    parser.add_argument(
+        "--schema-version", default=DEFAULT_SCHEMA_VERSION, choices=["v1", "v2", "v3"],
         help="출력 스키마 버전 (v1=자유 텍스트, v2=JSON+4축 점수)"
     )
     args = parser.parse_args()
@@ -347,6 +363,8 @@ if __name__ == "__main__":
         extract_only=args.extract_only,
         openai_client=openai_client,
         schema_version=args.schema_version,
+        today=args.today,
+        rerank_scores=args.rerank,
     )
 
     if args.out:

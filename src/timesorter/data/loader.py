@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from datasets import Dataset, load_dataset
 
-from .schema import SCHEDULER_SYSTEM_PROMPT_V1, SCHEDULER_SYSTEM_PROMPT_V2, render_system_prompt
+from .schema import render_system_prompt, system_prompt_for
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizer
@@ -25,15 +25,14 @@ def _apply_system_to_dpo(
     messages list여야 한다. 이 함수는 raw text prompt에 system prompt를 씌운
     messages list 형식으로 변환한다.
     """
-    system_tmpl = (
-        SCHEDULER_SYSTEM_PROMPT_V2 if schema_version == "v2" else SCHEDULER_SYSTEM_PROMPT_V1
-    )
+    system_tmpl = system_prompt_for(schema_version)
 
     def _transform(row: dict) -> dict:
         persona = row.get(persona_col, "직장인")
         if not isinstance(persona, str) or not persona.strip():
             persona = "직장인"
-        system_content = render_system_prompt(system_tmpl, persona)
+        today = str(row.get("today", "") or "")
+        system_content = render_system_prompt(system_tmpl, persona, today=today)
         messages = [
             {"role": "system", "content": system_content},
             {"role": "user", "content": str(row["prompt"])},

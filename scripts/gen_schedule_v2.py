@@ -157,7 +157,7 @@ async def _call_api(
     cache: _APICache,
     cache_lock: asyncio.Lock,
     max_tokens: int = 600,
-    temperature: float = 0.7,
+    temperature: float | None = 0.7,
     max_retries: int = _DEFAULT_MAX_RETRIES,
     label: str = "",
 ) -> str | None:
@@ -165,6 +165,8 @@ async def _call_api(
     cached = cache.get(cache_key)
     if cached:
         return cached
+    # gpt-5.5 등 일부 모델은 temperature 지정을 거부 — None이면 파라미터 생략
+    extra: dict = {} if temperature is None else {"temperature": temperature}
     for attempt in range(max_retries):
         try:
             resp = await client.chat.completions.create(
@@ -172,7 +174,7 @@ async def _call_api(
                 messages=messages,
                 max_completion_tokens=max_tokens,
                 response_format={"type": "json_object"},
-                temperature=temperature,
+                **extra,
             )
             raw = resp.choices[0].message.content.strip()
             await cache.set(cache_key, raw, cache_lock)
