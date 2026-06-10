@@ -19,8 +19,9 @@ training_args:
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 32
   num_train_epochs: 1          # hard negative는 신호가 강해 과적합 방지 위해 1 epoch
-  max_length: 1792             # 실측 최대 1719 (system+user+response), 12GB OOM 방지
+  max_length: 1536             # 데이터를 실측 ≤1480토큰으로 사전 필터링 (12GB OOM 방지)
   precompute_ref_log_probs: true   # ref forward를 사전 계산해 학습 중 피크 메모리 절감
+  precompute_ref_batch_size: 1     # 12GB에서 배치 4는 logits OOM(6.2GB) — 1만 가능
   beta: 0.1
   learning_rate: 5.0e-7
   gradient_checkpointing: true

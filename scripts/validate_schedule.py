@@ -186,10 +186,16 @@ def _call_judge(
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        max_completion_tokens=4000,
+        max_completion_tokens=16000,  # reasoning 모델은 추론 토큰이 예산을 잠식 — 여유 필요
         response_format={"type": "json_object"},
     )
-    raw = resp.choices[0].message.content.strip()
+    choice = resp.choices[0]
+    raw = (choice.message.content or "").strip()
+    if not raw:
+        raise RuntimeError(
+            f"판사 응답이 비어 있음 (finish_reason={choice.finish_reason}) — "
+            "max_completion_tokens 부족 가능성"
+        )
     return json.loads(raw)
 
 

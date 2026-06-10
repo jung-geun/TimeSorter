@@ -56,7 +56,13 @@ _EXTRACT_SYSTEM = """당신은 이메일에서 '수신자가 처리해야 할 �
 
 규칙:
 - 각 태스크는 한 줄로 간결하게 (동사형 종결: "~하기", "~제출", "~참석" 등)
-- 마감이 명시된 경우 괄호 안에 포함 (예: "계약서 검토 (5/26 오전까지)")
+- 마감·일시는 반드시 절대 날짜로 환산해 괄호 안에 포함 (예: "계약서 검토 (2026-05-26 오전까지)").
+  이메일의 "오늘"/"내일"/"이번 주 금요일" 같은 상대 표현은 이메일 헤더의 작성 일시(Date)를 기준으로
+  환산하세요. 작성일의 "오늘"은 읽는 시점의 오늘과 다를 수 있습니다.
+- 한 업무의 연속 단계(작성→업로드→발송 등)는 각 태스크에 선행조건을 표기
+  (예: "참조 메일 발송 (2026-05-24 17:00까지, 선행: 보고서 업로드 완료)")
+- 미이행 시 불이익(자동 에스컬레이션·위약금·클레임·법적 기한 등)이 명시되면 괄호 안에 포함
+  (예: "PR #847 리뷰 (2026-05-24 오전까지, 미처리 시 팀장 자동 에스컬레이션)")
 - 명확한 행동이 없는 단순 정보성 이메일은 tasks를 빈 배열로 반환
 - 반드시 {"tasks": ["...", "..."]} 형식의 JSON으로만 응답"""
 
@@ -93,8 +99,8 @@ class ScheduleResult:
 
 # ── 이메일 파싱 ───────────────────────────────────────────────────────────────
 
-def _parse_email_file(path: Path) -> tuple[str, str]:
-    """(subject, body) 반환."""
+def _parse_email_file(path: Path) -> tuple[str, str, str]:
+    """(subject, body, date) 반환. date는 헤더의 작성 일시 문자열 (없으면 "")."""
     raw = path.read_text(encoding="utf-8", errors="replace")
 
     # .eml 형식 파싱
@@ -109,20 +115,23 @@ def _parse_email_file(path: Path) -> tuple[str, str]:
         else:
             payload = msg.get_payload(decode=True)
             body = payload.decode("utf-8", errors="replace") if payload else msg.get_payload()
-        return subject, body
+        return subject, body, msg.get("Date", "")
 
     # .txt 헤더 파싱 (From:/To:/Subject:/Date: 형식)
     lines = raw.splitlines()
     subject = path.stem
+    date = ""
     body_start = 0
     for i, line in enumerate(lines):
         if line.startswith("Subject:"):
             subject = line.split(":", 1)[1].strip()
+        elif line.startswith("Date:"):
+            date = line.split(":", 1)[1].strip()
         elif line.strip() == "" and i > 0:
             body_start = i + 1
             break
     body = "\n".join(lines[body_start:])
-    return subject, body
+    return subject, body, date
 
 
 # ── 태스크 추출 ───────────────────────────────────────────────────────────────
@@ -132,8 +141,10 @@ def extract_tasks_from_email(
     body: str,
     client: OpenAI,
     source_file: str = "",
+    date: str = "",
 ) -> EmailTask:
-    content = f"제목: {subject}\n\n{body.strip()}"
+    date_line = f"작성 일시: {date}\n" if date else ""
+    content = f"{date_line}제목: {subject}\n\n{body.strip()}"
     try:
         resp = client.chat.completions.create(
             model=EXTRACTOR_MODEL,
@@ -248,10 +259,10 @@ def run_pipeline(
     # Step 1: 이메일별 태스크 추출
     all_email_tasks: list[EmailTask] = []
     for path in email_files:
-        subject, body = _parse_email_file(path)
+        subject, body, date = _parse_email_file(path)
         if verbose:
             print(f"[{path.name}] 제목: {subject[:50]}")
-        et = extract_tasks_from_email(subject, body, openai_client, source_file=path.name)
+        et = extract_tasks_from_email(subject, body, openai_client, source_file=path.name, date=date)
         if et.tasks:
             all_email_tasks.append(et)
             for t in et.tasks:
