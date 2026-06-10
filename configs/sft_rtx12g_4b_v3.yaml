@@ -1,8 +1,9 @@
 # Stage 2 SFT v3 — 날짜 추론·마감 세분화·의존성·리스크 강화
-# sft v2 어댑터에서 이어 학습 (sft_adapter), system prompt에 오늘 날짜 주입 (schema v3)
+# dpo v2 어댑터에서 이어 학습 — sft_rtx12g_4b_v2는 가중치 없이 설정만 커밋되어 있어
+# (1affad8) 가중치가 존재하는 v2 최신 산출물인 dpo_rtx12g_4b_v2를 시작점으로 사용.
 # 주의: configs v2의 "Qwen3.5-4B" 표기와 달리 어댑터 실제 베이스는 Qwen3-4B-Instruct-2507
 model_name: Qwen/Qwen3-4B-Instruct-2507
-sft_adapter: outputs/sft_rtx12g_4b_v2
+sft_adapter: outputs/dpo_rtx12g_4b_v2
 dataset: data/scheduler_v3_combined.parquet
 output_dir: outputs/sft_rtx12g_4b_v3
 max_samples: null
