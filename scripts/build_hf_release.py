@@ -58,7 +58,23 @@ dpo = pd.concat([
 ], ignore_index=True)
 before = len(dpo)
 dpo = dpo.drop_duplicates(subset=["prompt", "chosen", "rejected"]).reset_index(drop=True)
+
+
+def _tier(row) -> str:
+    """학습 권장 등급 — docs/DATASET_AUDIT.md 참고."""
+    if row["version"] == "v1":
+        return "legacy_text"          # 자유 텍스트 chosen — v3+ 학습 사용 금지
+    src = str(row["source"])
+    if src.startswith("refusal") or "refusal" in str(row["category"]):
+        return "refusal"              # 거부 능력 유지 — 항상 소량 혼합
+    if row["version"] in ("v3", "v4") and str(row["source"]).startswith(("v3_", "v4_")):
+        return "hard"                 # 내용 오류 negative — 본 학습 권장
+    return "easy_format"              # v2 형식·단순 negative — 길이 편향 주의
+
+
+dpo["tier"] = dpo.apply(_tier, axis=1)
 dpo.to_parquet(OUT / "dpo_train.parquet", index=False)
+print(dpo["tier"].value_counts().to_string())
 print(f"dpo_train: {len(dpo):,} (중복 제거 {before - len(dpo)})")
 print(dpo["version"].value_counts().to_string(), "\n")
 
