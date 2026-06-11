@@ -67,6 +67,27 @@ def rerank(
     return resp.model_copy(update={"priority_order": new_order})
 
 
+def rerank_guard(resp: ScheduleResponse) -> ScheduleResponse:
+    """가드레일 재정렬 — 모델 순서를 유지하되 명백한 모순만 교정.
+
+    held-out 평가에서 전면 rerank(가중합 정렬)는 4축 점수가 표현하지 못하는 정보
+    (같은 날 내 시각 순서, 체인 단계 순서)를 파괴해 통과율을 떨어뜨렸다.
+    이 함수는 v3 프롬프트 규칙상 '지난 일정' 시그니처(urgency≤1 AND time_constraint≤1)인
+    태스크만 상대 순서를 보존하며 최하위로 보낸다.
+    """
+    if not resp.tasks or not resp.scores:
+        return resp
+    score_map = {s.task_id: s for s in resp.scores}
+
+    def _is_past(tid: int) -> bool:
+        s = score_map.get(tid)
+        return s is not None and s.urgency <= 1 and s.time_constraint <= 1
+
+    live = [t for t in resp.priority_order if not _is_past(t)]
+    past = [t for t in resp.priority_order if _is_past(t)]
+    return resp.model_copy(update={"priority_order": live + past})
+
+
 def order_consistency(resp: ScheduleResponse, weights: RankWeights = DEFAULT_WEIGHTS) -> float:
     """모델 priority_order와 점수 기반 순서의 일치율 (같은 위치 비율, 0.0-1.0)."""
     if not resp.priority_order:

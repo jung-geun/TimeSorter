@@ -220,11 +220,15 @@ def generate_schedule(
     if schema_version in ("v2", "v3"):
         parsed = parse_or_repair(raw)
         if rerank_scores:
-            from timesorter.rank import order_consistency, rerank
+            from timesorter.rank import order_consistency, rerank, rerank_guard
             consistency = order_consistency(parsed)
-            if consistency < 1.0:
-                print(f"  [rerank] score↔order 일치율 {consistency:.0%} → 점수 기반 재정렬 적용")
-            parsed = rerank(parsed)
+            # held-out 평가 결과 전면 rerank는 시각·체인 순서 정보를 파괴 — 순서가
+            # 크게 어긋난 경우(일치율<0.5, 역순 출력 등)에만 전면 재정렬, 그 외 가드만.
+            if consistency < 0.5:
+                print(f"  [rerank] score↔order 일치율 {consistency:.0%} → 전면 재정렬 적용")
+                parsed = rerank(parsed)
+            else:
+                parsed = rerank_guard(parsed)
         return response_to_text(parsed)
     return raw
 

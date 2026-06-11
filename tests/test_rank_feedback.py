@@ -4,7 +4,7 @@ import pytest
 
 from timesorter.data.schema import ScheduleResponse
 from timesorter.feedback import FeedbackRecord, to_dpo_pair
-from timesorter.rank import DEFAULT_WEIGHTS, order_consistency, rerank, task_score
+from timesorter.rank import DEFAULT_WEIGHTS, order_consistency, rerank, rerank_guard, task_score
 
 
 def _resp(scores: list[tuple[int, int, int, int, int]], order: list[int]) -> ScheduleResponse:
@@ -41,6 +41,18 @@ def test_task_score_range():
     )
     resp_low = _resp([(1, 1, 1, 1, 1)], order=[1])
     assert task_score(resp_low.scores[0]) == 0.0
+
+
+def test_rerank_guard_demotes_past_only():
+    # task 1 = 지난 일정 시그니처(u1,t1)가 1위, task 2·3은 모델 순서 유지돼야 함
+    resp = _resp([(1, 1, 3, 1, 1), (2, 5, 3, 1, 5), (3, 4, 5, 1, 3)], order=[1, 3, 2])
+    out = rerank_guard(resp)
+    assert out.priority_order == [3, 2, 1]  # 3,2 상대 순서 보존 + 1만 최하위
+
+
+def test_rerank_guard_no_past_is_noop():
+    resp = _resp([(1, 5, 3, 1, 5), (2, 2, 2, 1, 1)], order=[2, 1])
+    assert rerank_guard(resp).priority_order == [2, 1]
 
 
 def test_order_consistency():
