@@ -4,7 +4,7 @@ model_name: Qwen/Qwen3-4B-Instruct-2507
 sft_adapter: outputs/dpo_rtx12g_4b_v3
 dataset: data/grpo_prompts_v4.parquet     # meta 컬럼 필수 (build: scripts/build_grpo_prompts.py)
 output_dir: outputs/grpo_rtx12g_4b_v4
-max_samples: 384
+max_samples: 256              # 파일럿: 527s/step → 32스텝 ~4.7h (HF generate 병목)
 schema_version: "v3"
 wandb_run_name: grpo_rtx12g_4b_v4
 
@@ -15,18 +15,20 @@ lora:
   use_4bit: true
 
 training_args:
-  per_device_train_batch_size: 4      # = num_generations (한 스텝에 1프롬프트×4생성)
-  gradient_accumulation_steps: 8      # 유효 32 completion/업데이트
+  per_device_train_batch_size: 2      # 12GB: 학습 forward 동시 2시퀀스
+  gradient_accumulation_steps: 16     # 유효 32 completion/업데이트 (4생성 그룹 단위 유지)
   num_generations: 4
+  generation_batch_size: 4            # 기본값(유효 배치 32) 동시 생성은 KV 캐시 OOM — 4로 제한
   num_train_epochs: 1
-  max_prompt_length: 1024
-  max_completion_length: 768
+  max_completion_length: 768   # trl 1.5 GRPOConfig에는 max_prompt_length 없음
   learning_rate: 2.0e-6
   beta: 0.04                          # KL 페널티 (기준: dpo_v3 정책)
   temperature: 0.9
   gradient_checkpointing: true
   logging_steps: 1
-  save_strategy: "epoch"
+  save_strategy: "steps"       # 크래시 대비 중간 저장 (스텝당 ~9분이라 손실 비용 큼)
+  save_steps: 8
+  save_total_limit: 2
   report_to: "wandb"
   remove_unused_columns: false
   optim: "adamw_8bit"

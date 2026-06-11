@@ -289,6 +289,9 @@ def verify_chosen(skel: Skeleton, chosen_json: str) -> list[str]:
     if sorted(resp.priority_order) != sorted(t.id for t in resp.tasks):
         errors.append("priority_order가 전체 태스크를 정확히 1회씩 포함하지 않음")
         return errors
+    if {t.id for t in resp.tasks} != {s.idx for s in skel.specs}:
+        errors.append("태스크 id가 입력 순서 1..N과 다름")
+        return errors
 
     pos = {tid: i for i, tid in enumerate(resp.priority_order)}
     smap = {s.task_id: s for s in resp.scores}

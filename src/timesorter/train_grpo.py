@@ -51,16 +51,20 @@ def make_reward_fn():
         """보상: 파싱 실패 -1.0 / 규칙 위반당 -0.3 (하한 -1.0) / 전 규칙 통과 +1.0."""
         rewards: list[float] = []
         for comp, m in zip(completions, meta or []):
-            text = comp if isinstance(comp, str) else str(comp)
-            parsed = parse_lenient(text)
-            if parsed is None or not parsed.tasks:
+            try:
+                text = comp if isinstance(comp, str) else str(comp)
+                parsed = parse_lenient(text)
+                if parsed is None or not parsed.tasks:
+                    rewards.append(-1.0)
+                    continue
+                md = json.loads(m)
+                skel = Skeleton(scenario=md["scenario"], today=md["today"],
+                                specs=[TaskSpec(**s) for s in md["specs"]])
+                errors = verify_chosen(skel, parsed.model_dump_json())
+                rewards.append(1.0 if not errors else max(-1.0, 1.0 - 0.3 * len(errors) - 0.3))
+            except Exception:
+                # 보상 함수 예외가 학습 전체를 죽이면 안 됨 — 형식 불량으로 간주
                 rewards.append(-1.0)
-                continue
-            md = json.loads(m)
-            skel = Skeleton(scenario=md["scenario"], today=md["today"],
-                            specs=[TaskSpec(**s) for s in md["specs"]])
-            errors = verify_chosen(skel, parsed.model_dump_json())
-            rewards.append(1.0 if not errors else max(-1.0, 1.0 - 0.3 * len(errors) - 0.3))
         return rewards
 
     reward_fn.__name__ = "skeleton_rule_reward"
