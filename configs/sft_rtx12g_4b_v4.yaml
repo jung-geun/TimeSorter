@@ -1,0 +1,36 @@
+# Stage 2 SFT v4 — 감사 통과 curated 데이터 + 프롬프트 loss 마스킹
+# 데이터: curated(v3-v5, persona_fit 4.9-5.0) 3,356 + refusal 1,200 + v2_schedule 1,500
+# prompt_completion: completion_only_loss로 시스템·유저 프롬프트 토큰 loss 제거
+#   (기존 v2/v3 SFT는 전체 시퀀스에 loss — 학습 신호의 절반 이상이 프롬프트 암기에 소모)
+model_name: Qwen/Qwen3-4B-Instruct-2507
+sft_adapter: outputs/dpo_rtx12g_4b_v3
+dataset: data/sft_v4_train.parquet
+output_dir: outputs/sft_rtx12g_4b_v4
+max_samples: null
+ko_ultrafeedback_n: 0
+max_seq_length: 2048
+schema_version: "v3"
+prompt_completion: true
+wandb_run_name: sft_rtx12g_4b_v4
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  num_train_epochs: 2
+  learning_rate: 1.0e-5
+  gradient_checkpointing: true
+  packing: true
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

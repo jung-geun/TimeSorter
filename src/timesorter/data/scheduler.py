@@ -31,11 +31,23 @@ def _to_chatml(
     persona: str = "직장인",
     schema_version: str = "v1",
     today: str = "",
+    prompt_completion: bool = False,
 ) -> dict:
     system_tmpl = system_prompt_for(schema_version)
+    system = render_system_prompt(system_tmpl, persona, today=today)
+    if prompt_completion:
+        # TRL prompt-completion 포맷 — completion_only_loss로 프롬프트 토큰 loss 마스킹.
+        # Qwen 템플릿에 {% generation %} 태그가 없어 assistant_only_loss는 사용 불가.
+        return {
+            "prompt": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+            "completion": [{"role": "assistant", "content": response}],
+        }
     return {
         "messages": [
-            {"role": "system", "content": render_system_prompt(system_tmpl, persona, today=today)},
+            {"role": "system", "content": system},
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": response},
         ]
@@ -69,6 +81,7 @@ def load_scheduler_dataset(
     ko_ultrafeedback_n: int = 0,
     max_samples: int | None = None,
     schema_version: str = "v1",
+    prompt_completion: bool = False,
 ) -> Dataset:
     """SFT용 스케줄러 데이터셋 로드.
 
@@ -86,7 +99,8 @@ def load_scheduler_dataset(
         for _, r in df.iterrows():
             persona = r.get("persona", "직장인")
             today = str(r.get("today", "") or "")
-            rows.append(_to_chatml(str(r["prompt"]), str(r["chosen"]), persona, schema_version, today))
+            rows.append(_to_chatml(str(r["prompt"]), str(r["chosen"]), persona,
+                                   schema_version, today, prompt_completion))
         print(f"[scheduler] parquet 로드: {len(rows)}개 ({parquet_path})")
 
     # parquet가 없거나 비어있으면 ko_Ultrafeedback으로 자동 fallback

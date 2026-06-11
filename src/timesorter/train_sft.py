@@ -75,6 +75,7 @@ def main(config_path: str) -> None:
         ko_ultrafeedback_n=cfg.ko_ultrafeedback_n,
         max_samples=cfg.max_samples,
         schema_version=cfg.schema_version,
+        prompt_completion=cfg.prompt_completion,
     )
     print(f"[data] {len(ds)}개 샘플 로드")
 

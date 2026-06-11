@@ -25,6 +25,7 @@ class RunConfig:
     sft_adapter: str | None = None
     ko_ultrafeedback_n: int = 0
     schema_version: str = "v1"
+    prompt_completion: bool = False   # TRL prompt-completion 포맷 (프롬프트 loss 마스킹)
     wandb_project: str = "drl-qwen3"
     wandb_run_name: str | None = None
     auto_batch: bool = False
@@ -51,6 +52,7 @@ class RunConfig:
             auto_batch=data.get("auto_batch", False),
             target_eff_batch=data.get("target_eff_batch", 32),
             schema_version=data.get("schema_version", "v1"),
+            prompt_completion=data.get("prompt_completion", False),
             lora=lora,
             training_args=data.get("training_args", {}),
         )
