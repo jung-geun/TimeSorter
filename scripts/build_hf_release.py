@@ -33,6 +33,7 @@ sft = pd.concat([
     norm(pd.read_parquet("data/scheduler_v2_combined.parquet"), "v2", SFT_COLS),
     norm(pd.read_parquet("data/scheduler_v3.parquet"), "v3", SFT_COLS),
     norm(pd.read_parquet("data/scheduler_v4_extra.parquet"), "v4", SFT_COLS),
+    norm(pd.read_parquet("data/scheduler_v5_claude.parquet"), "v5", SFT_COLS),
 ], ignore_index=True)
 before = len(sft)
 sft = sft.drop_duplicates(subset=["prompt"]).reset_index(drop=True)
@@ -83,6 +84,7 @@ GRPO_COLS = ["prompt", "persona", "today", "source", "meta"]
 grpo = pd.concat([
     norm(pd.read_parquet("data/scheduler_v3.parquet"), "v3", GRPO_COLS),
     norm(pd.read_parquet("data/scheduler_v4_extra.parquet"), "v4", GRPO_COLS),
+    norm(pd.read_parquet("data/scheduler_v5_claude.parquet"), "v5", GRPO_COLS),
 ], ignore_index=True)
 grpo = grpo[grpo["meta"].astype(str).str.len() > 2].drop_duplicates(subset=["prompt"])
 grpo = grpo.reset_index(drop=True)
