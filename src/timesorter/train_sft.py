@@ -84,7 +84,7 @@ def main(config_path: str) -> None:
         "output_dir": cfg.output_dir,
         "bf16": use_bf16,
         "fp16": False,
-        "max_seq_length": cfg.max_seq_length,
+        "max_length": cfg.max_seq_length,   # trl 1.x: max_seq_length → max_length
         "packing": False,
         "logging_steps": 1,
         "save_strategy": "no",
