@@ -37,7 +37,26 @@ sft = pd.concat([
 ], ignore_index=True)
 before = len(sft)
 sft = sft.drop_duplicates(subset=["prompt"]).reset_index(drop=True)
+
+# 학습 권장 등급 (opus 4.8 의미 감사 결과 — docs/DATASET_AUDIT.md)
+_v2_src = pd.read_parquet("data/scheduler_v2_combined.parquet")
+_v2_src_map = dict(zip(_v2_src["prompt"], _v2_src["source"]))
+
+
+def _sft_tier(row) -> str:
+    if row["version"] in ("v3", "v4", "v5"):
+        return "curated"            # 골격 검증 + persona_fit 4.9-5.0
+    src = str(_v2_src_map.get(row["prompt"], ""))
+    if src.startswith("refusal"):
+        return "v2_refusal"         # 거부 학습 — 항상 혼합 권장
+    if "할 일 목록" in row["prompt"] or "일정" in row["prompt"]:
+        return "v2_schedule"        # 스케줄 형식이나 persona_fit 3.3 — 소량 혼합만
+    return "v2_offformat"           # orca/xlam 등 비스케줄 — 학습 비권장
+
+
+sft["tier"] = sft.apply(_sft_tier, axis=1)
 sft.to_parquet(OUT / "sft_train.parquet", index=False)
+print(sft["tier"].value_counts().to_string())
 print(f"sft_train: {len(sft):,} (중복 제거 {before - len(sft)})")
 print(sft["version"].value_counts().to_string(), "\n")
 
