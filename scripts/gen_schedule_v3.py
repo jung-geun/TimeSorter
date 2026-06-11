@@ -56,7 +56,7 @@ from gen_schedule_v2 import (
 load_dotenv()
 
 _TEXT_MODEL = "gpt-5.4-mini"     # 태스크 텍스트 생성
-_CHOSEN_MODEL = "gpt-5.5"        # chosen JSON 생성 (판사 모델과 동일 계열)
+_CHOSEN_MODEL = "gpt-5.4"        # chosen JSON 생성 (정책: OpenAI는 gpt-5.4 계열만 사용)
 _DEFAULT_CONCURRENCY = 12
 
 _SCENARIOS = [
@@ -66,6 +66,11 @@ _SCENARIOS = [
     ("risk", 0.15),
     ("relative", 0.10),
 ]
+
+# v4 증강 시나리오 (--scenarios "name:count,..." 로 지정)
+#   past_split    : today 기준 지난/안 지난 스케줄 다수 혼합 — 깨끗한 분리 학습
+#   no_today      : 오늘 날짜 미상 — 절대 날짜의 상대 정렬만 수행, '지남' 판단 금지
+#   am_escalation : 오전 마감 + 에스컬레이션 → urgency=5 최우선 (v2 검증 PR 실패 대응)
 
 _RISK_CLAUSES = [
     "미처리 시 팀장에게 자동 에스컬레이션",
@@ -170,11 +175,43 @@ def build_skeleton(scenario: str, today: datetime.date, rng: random.Random) -> S
                                   _dt(today, off, hour), rel_expr=expr))
         specs.append(TaskSpec(0, "none"))
 
+    elif scenario == "past_split":
+        # 지난 일정 3-4개 + 유효 일정 3-4개 혼합 — 깨끗한 과거/유효 분리가 목표
+        for _ in range(rng.randint(3, 4)):
+            off = -rng.randint(1, 5)
+            specs.append(TaskSpec(0, "past", _dt(today, off, rng.randint(9, 19)), is_past=True))
+        specs.append(TaskSpec(0, "today", _dt(today, 0, rng.randint(9, 18))))
+        for _ in range(rng.randint(1, 2)):
+            specs.append(TaskSpec(0, "future", _dt(today, rng.randint(1, 6), rng.randint(9, 18))))
+        if rng.random() < 0.5:
+            specs.append(TaskSpec(0, "none"))
+
+    elif scenario == "no_today":
+        # 오늘 날짜 미상 — 절대 날짜들 간 상대 정렬만 가능. '지남' 판단은 환각.
+        base = today  # 기준일은 내부 생성용일 뿐, 시스템 프롬프트에는 미주입
+        offs = rng.sample(range(0, 14), k=rng.randint(4, 5))
+        for off in offs:
+            specs.append(TaskSpec(0, "dated", _dt(base, off, rng.randint(9, 18))))
+        if rng.random() < 0.6:
+            specs.append(TaskSpec(0, "none"))
+
+    elif scenario == "am_escalation":
+        # 오전 마감 + 에스컬레이션(긴급5) vs 같은 날 오후 마감 고중요 — 오전이 1위여야 함
+        specs.append(TaskSpec(
+            0, "risk", _dt(today, 0, rng.randint(9, 11), rng.choice([0, 30])),
+            risk=True, risk_clause=rng.choice(_RISK_CLAUSES),
+        ))
+        specs.append(TaskSpec(0, "today", _dt(today, 0, rng.randint(14, 18))))
+        specs.append(TaskSpec(0, "future", _dt(today, rng.randint(2, 7), rng.randint(9, 18))))
+        if rng.random() < 0.7:
+            specs.append(TaskSpec(0, "none"))
+
     else:
         raise ValueError(f"unknown scenario: {scenario}")
 
     specs = _shuffle_reindex(specs, rng)
-    return Skeleton(scenario=scenario, today=today.isoformat(), specs=specs)
+    skel_today = "" if scenario == "no_today" else today.isoformat()
+    return Skeleton(scenario=scenario, today=skel_today, specs=specs)
 
 
 # ── GPT 프롬프트 ──────────────────────────────────────────────────────────────
@@ -257,6 +294,21 @@ def verify_chosen(skel: Skeleton, chosen_json: str) -> list[str]:
     smap = {s.task_id: s for s in resp.scores}
     spec = {s.idx: s for s in skel.specs}
 
+    # no_today: 오늘 미상 — 절대 날짜의 상대 정렬만 검증, '지남' 판단은 환각으로 간주
+    if skel.today == "":
+        dated = sorted((s for s in skel.specs if s.deadline), key=lambda s: s.deadline)
+        for a, b in zip(dated, dated[1:]):
+            if a.deadline < b.deadline and pos[a.idx] > pos[b.idx]:
+                errors.append(f"마감 {a.deadline}(태스크 {a.idx})이 "
+                              f"{b.deadline}(태스크 {b.idx})보다 후순위")
+        for s in resp.scores:
+            if "이미 지" in (s.reason or "") or "지난 일정" in (s.reason or ""):
+                errors.append(f"오늘 미상인데 태스크 {s.task_id}의 reason이 '지남'을 단정함")
+        none_ids = [s.idx for s in skel.specs if s.kind == "none"]
+        if none_ids and resp.priority_order and resp.priority_order[0] in none_ids:
+            errors.append("마감 없는 태스크가 1위에 배치됨")
+        return errors
+
     # 1) 지난 일정은 모든 미지남 태스크보다 후순위 + 낮은 urgency/time_constraint
     past_ids = [s.idx for s in skel.specs if s.is_past]
     live_ids = [s.idx for s in skel.specs if not s.is_past]
@@ -308,6 +360,17 @@ def verify_chosen(skel: Skeleton, chosen_json: str) -> list[str]:
     if none_ids and resp.priority_order and resp.priority_order[0] in none_ids:
         errors.append("마감 없는 태스크가 1위에 배치됨")
 
+    # 6) am_escalation: 오전 마감+에스컬레이션은 urgency=5 + 같은 날 오후 마감보다 상위
+    if skel.scenario == "am_escalation":
+        am = next((s for s in skel.specs if s.risk), None)
+        pm = next((s for s in skel.specs if s.kind == "today"), None)
+        if am:
+            sc = smap.get(am.idx)
+            if sc and sc.urgency < 5:
+                errors.append(f"오전 마감+에스컬레이션 태스크 {am.idx}의 urgency가 5 미만")
+            if pm and pos[am.idx] > pos[pm.idx]:
+                errors.append(f"오전 마감 태스크 {am.idx}가 오후 마감 태스크 {pm.idx}보다 후순위")
+
     return errors
 
 
@@ -327,7 +390,8 @@ async def gen_row(
 ) -> dict | None:
     today = datetime.date(2026, 1, 1) + datetime.timedelta(days=rng.randint(0, 360))
     skel = build_skeleton(scenario, today, rng)
-    today_h = f"{skel.today} ({_WEEKDAYS_KO[today.weekday()]})"
+    today_h = (f"{skel.today} ({_WEEKDAYS_KO[today.weekday()]})" if skel.today
+               else "날짜 미상 (오늘 날짜를 알 수 없음)")
 
     # Step 1: 태스크 텍스트 생성
     spec_lines = "\n".join(_spec_to_gen_line(s, skel.today) for s in skel.specs)
@@ -357,6 +421,9 @@ async def gen_row(
     # Step 2: chosen 생성 (+검증 실패 시 위반 사항을 알려주고 1회 재생성)
     system = render_system_prompt(SCHEDULER_SYSTEM_PROMPT_V3, persona_label, today=skel.today)
     facts = "\n".join(_spec_to_fact(s, skel.today) for s in skel.specs)
+    if not skel.today:
+        facts = ("- 오늘 날짜 미상: 어떤 일정도 '이미 지났다'고 단정하지 말 것. "
+                 "절대 날짜 간 상대 비교(이른 마감 = 높은 urgency)만 수행.\n" + facts)
     gen_user = user_prompt + _CHOSEN_HINT_HEADER.format(facts=facts)
 
     feedback = ""
@@ -396,12 +463,18 @@ async def run(args: argparse.Namespace) -> None:
     nem_df = nem_df.sample(args.total * 2, random_state=args.seed).reset_index(drop=True)
     print(f"[v3] 페르소나 {len(nem_df)}개 샘플링, 목표 {args.total}행")
 
-    # 시나리오 배분
+    # 시나리오 배분 (--scenarios "name:count,..." 지정 시 그대로 사용)
     plan: list[str] = []
-    for name, w in _SCENARIOS:
-        plan.extend([name] * int(args.total * w))
-    while len(plan) < args.total:
-        plan.append("dated_mixed")
+    if args.scenarios:
+        for part in args.scenarios.split(","):
+            name, _, cnt = part.strip().partition(":")
+            plan.extend([name] * int(cnt))
+        args.total = len(plan)
+    else:
+        for name, w in _SCENARIOS:
+            plan.extend([name] * int(args.total * w))
+        while len(plan) < args.total:
+            plan.append("dated_mixed")
     rng.shuffle(plan)
 
     ckpt_path = Path(args.ckpt)
@@ -464,6 +537,8 @@ async def run(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="v3 스케줄 데이터 생성")
     parser.add_argument("--total", type=int, default=2000)
+    parser.add_argument("--scenarios", default=None,
+                        help='시나리오별 수량 지정 (예: "past_split:200,no_today:200,am_escalation:150")')
     parser.add_argument("--text-model", default=_TEXT_MODEL)
     parser.add_argument("--chosen-model", default=_CHOSEN_MODEL)
     parser.add_argument("--concurrency", type=int, default=_DEFAULT_CONCURRENCY)

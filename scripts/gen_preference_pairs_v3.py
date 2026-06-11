@@ -132,6 +132,19 @@ def make_rejected(
         rej.priority_order = list(reversed(resp.priority_order))
         out.append(("order_score_mismatch", rej))
 
+    # no_today: 오늘 미상인데 임의 태스크를 '이미 지남'으로 단정하는 날짜 환각 negative
+    if meta.get("today") == "":
+        dated_ids = [s["idx"] for s in specs if s.get("deadline")]
+        if dated_ids:
+            tid = rng.choice(dated_ids)
+            rej = resp.model_copy(deep=True)
+            rej.priority_order = _move_to_back(resp.priority_order, tid)
+            for s in rej.scores:
+                if s.task_id == tid:
+                    s.urgency, s.time_constraint = 1, 1
+                    s.reason = "이미 지난 일정이므로 우선순위 최하위에 배치합니다."
+            out.append(("past_hallucination", rej))
+
     return out
 
 

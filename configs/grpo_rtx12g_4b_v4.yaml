@@ -1,0 +1,32 @@
+# Stage 4 GRPO 파일럿 — verify_chosen 골격 규칙을 검증 가능한 보상으로 사용 (RLVR)
+# dpo_v3 위에서 on-policy 강화: held-out에서 모델이 실제로 틀리는 chain/past_rank를 직접 벌점
+model_name: Qwen/Qwen3-4B-Instruct-2507
+sft_adapter: outputs/dpo_rtx12g_4b_v3
+dataset: data/grpo_prompts_v4.parquet     # meta 컬럼 필수 (build: scripts/build_grpo_prompts.py)
+output_dir: outputs/grpo_rtx12g_4b_v4
+max_samples: 384
+schema_version: "v3"
+wandb_run_name: grpo_rtx12g_4b_v4
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 4      # = num_generations (한 스텝에 1프롬프트×4생성)
+  gradient_accumulation_steps: 8      # 유효 32 completion/업데이트
+  num_generations: 4
+  num_train_epochs: 1
+  max_prompt_length: 1024
+  max_completion_length: 768
+  learning_rate: 2.0e-6
+  beta: 0.04                          # KL 페널티 (기준: dpo_v3 정책)
+  temperature: 0.9
+  gradient_checkpointing: true
+  logging_steps: 1
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  optim: "adamw_8bit"
