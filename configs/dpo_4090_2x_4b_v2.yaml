@@ -14,8 +14,8 @@ lora:
   use_4bit: false
 
 training_args:
-  per_device_train_batch_size: 2   # 2 GPUs × 2 × 8 = eff_batch 32
-  gradient_accumulation_steps: 8
+  per_device_train_batch_size: 1   # OOM fix: bs2 fails on 24GB; 2 GPUs × 1 × 16 = eff_batch 32
+  gradient_accumulation_steps: 16
   num_train_epochs: 2
   max_length: 1536
   max_prompt_length: 768
