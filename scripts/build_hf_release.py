@@ -63,8 +63,10 @@ _v2_src_map = dict(zip(_v2_src["prompt"], _v2_src["source"]))
 
 
 def _sft_tier(row) -> str:
-    if row["version"] in ("v3", "v4", "v5", "v6_rework"):
-        return "curated"            # 골격 검증 + persona_fit 4.9-5.0
+    if row["version"] in ("v3", "v4", "v5"):
+        return "curated"            # 골격 검증 + persona_fit 4.9-5.0 — 본 학습 권장
+    if row["version"] == "v6_rework":
+        return "rework"             # v1/v2 재가공 — persona_fit 3.55, 변별력 필터 통과
     src = str(_v2_src_map.get(row["prompt"], ""))
     if src.startswith("refusal"):
         return "v2_refusal"         # 거부 학습 — 항상 혼합 권장

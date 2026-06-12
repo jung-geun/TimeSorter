@@ -498,7 +498,7 @@ uv run python scripts/validate_schedule.py \
 | 시나리오 | dated_mixed·past_split(지난 일정 분리), intraday(오전>오후), dependency_chain(연속 배치), risk·am_escalation(불이익 조항→점수 상향), no_today(날짜 미상 — '지남' 단정 금지), relative |
 | `today` 컬럼 | 시스템 프롬프트에 주입되는 오늘 날짜 (빈 문자열 = 날짜 미상 시나리오) |
 | `meta` 컬럼 | 골격 JSON — DPO negative 생성·자동 평가·GRPO 보상에 재사용 |
-| **tier** | `curated`(v3-v5, opus 감사 persona_fit 4.9-5.0) **본 학습 권장** / `v2_refusal`(거부 학습, 항상 혼합) / `v2_schedule`(persona_fit 3.3 — 소량만) / `v2_offformat`(비스케줄, 비권장) |
+| **tier** | `curated`(v3-v5, opus 감사 persona_fit 4.9-5.0) **본 학습 권장** / `rework`(v1/v2 재가공, persona_fit 3.55, 변별력 필터 통과 — 보완용) / `v2_refusal`(거부 학습, 항상 혼합) / `v2_schedule`(persona_fit 3.3 — 소량만) / `v2_offformat`(비스케줄, 비권장) |
 | 실증 효과 | curated+프롬프트 loss 마스킹 학습 시 held-out 56.7%→**77.3%** (+20.6%p) |
 
 ### DPO — `config=dpo` (20,989쌍, tier 컬럼)

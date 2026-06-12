@@ -28,7 +28,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent))
 
-from timesorter.data.schema import parse_lenient, render_system_prompt
+from timesorter.data.schema import parse_lenient, render_system_prompt, system_prompt_for
 
 
 def load_jsonl(pattern: str) -> list[dict]:
@@ -54,7 +54,9 @@ def validate_chosen(chosen_json: str, tasks: list[str], meta: dict) -> list[str]
     except Exception:
         return ["json_parse_error"]
 
-    task_ids = {t["id"] for t in d.get("tasks", [])}
+    task_list = d.get("tasks", [])
+    n_tasks = len(task_list)
+    task_ids = set(range(1, n_tasks + 1))
     po = d.get("priority_order", [])
     scores = d.get("scores", [])
 
@@ -103,7 +105,8 @@ def build_prompt(skel_row: dict) -> str:
     name_match = re.match(r"(.+?)\s*씨", persona)
     name = name_match.group(1) if name_match else "사용자"
     header = f"[{name} 씨의 할 일 목록]"
-    system = render_system_prompt(today=skel_row.get("today", ""))
+    tmpl = system_prompt_for("v3")
+    system = render_system_prompt(tmpl=tmpl, persona=persona, today=skel_row.get("today", ""))
     return f"{system}\n\n{header}\n{tasks_text}"
 
 

@@ -79,8 +79,9 @@ configs:
 |--------|-------|------|------|
 {rows}
 
-- **sft** (기본): v2~v4 JSON 스키마 통합. 컬럼 prompt/chosen(JSON)/persona/today/source/meta/version.
+- **sft** (기본): v2~v5+rework JSON 스키마 통합. 컬럼 prompt/chosen(JSON)/persona/today/source/meta/version.
   `today`는 시스템 프롬프트에 주입되는 오늘 날짜(ISO, 빈 문자열=날짜 미상 시나리오).
+  **tier**: `curated`(v3-v5, persona_fit 4.9-5.0) / `rework`(v1/v2 재가공, persona_fit 3.55) / `v2_refusal` / `v2_schedule` / `v2_offformat`
 - **dpo**: chosen/rejected 쌍. v3+는 형식 동일·내용만 오류인 hard negative
   (date_confusion/granularity_swap/dependency_scatter/risk_ignore/order_score_mismatch/past_hallucination).
   v5에는 학습된 모델이 실제로 위반한 출력을 rejected로 수집한 **on-policy 351쌍** 포함.
@@ -148,7 +149,7 @@ if __name__ == "__main__":
         print(f"  [삭제] {f}")
 
     _CONFIG_LABEL = {
-        "sft_train": ("sft", "train", "SFT 본 학습 (v2~v5 JSON, curated 3.4K 포함)"),
+        "sft_train": ("sft", "train", "SFT 본 학습 (v2~v5+rework, curated 3.4K+rework 1.4K)"),
         "sft_v1_text": ("sft_v1_text", "train", "v1 자유 텍스트"),
         "dpo_train": ("dpo", "train", "DPO 쌍 v1~v5 (on-policy 351쌍 포함)"),
         "grpo_train": ("grpo", "train", "GRPO 프롬프트+골격 (v3~v5)"),
