@@ -164,8 +164,47 @@
 | DPO v1 | `outputs/dpo_rtx12g_4b` | dpo_pairs_v1 | ~5K쌍 | — | v1 어댑터 위 선호도 학습 |
 | SFT v2 | `outputs/sft_rtx12g_4b_v2` | scheduler_v2_combined | 10,958 | — | 4축 JSON 출력 (가중치 미보존) |
 | DPO v2 | `outputs/dpo_rtx12g_4b_v2` | dpo_pairs_v2 | 15,280쌍 | 0.0043 | v2 최종 |
-| **SFT v3** | **`outputs/sft_rtx12g_4b_v3`** | **scheduler_v3_combined** | **5,678** | **0.328** | **dpo_v2에서 이어 학습, today 주입** |
-| **DPO v3** | **`outputs/dpo_rtx12g_4b_v3`** | **dpo_pairs_v3** | **3,722쌍** | **0.635** | **hard negative, 현재 최신 어댑터** |
+| SFT v3 | `outputs/sft_rtx12g_4b_v3` | scheduler_v3_combined | 5,678 | 0.328 | dpo_v2에서 이어 학습, today 주입 |
+| DPO v3 | `outputs/dpo_rtx12g_4b_v3` | dpo_pairs_v3 | 3,722쌍 | 0.635 | hard negative |
+| GRPO v4 | `outputs/grpo_rtx12g_4b_v4` | grpo_prompts_v4 | 256×4생성 | reward 0.38 | RLVR 파일럿 — 동률 (도즈 부족) |
+| **SFT v4** | **`outputs/sft_rtx12g_4b_v4`** | **sft_v4_train (curated)** | **6,056** | **0.315** | **현재 최선 어댑터 (서빙 적용)** |
+| DPO v5 | `outputs/dpo_rtx12g_4b_v5` | dpo_pairs_v5 (on-policy) | 1,368쌍 | 0.678 | sft_v4와 동률 |
+
+### v4에서 나타난 특징과 변화 (2026-06-12)
+
+**무엇을 바꿨나** — v4는 모델 구조가 아니라 "무엇으로, 어떻게 학습하느냐"를 바꾼 사이클이다.
+
+1. **데이터 선별 (curated tier)**: Claude Opus 4.8 의미 감사로 v2 데이터의 구조적 결함
+   (persona_fit 3.3, 표본 35%가 페르소나-할일 불일치, 비스케줄 오염 3,943행)을 정량 확인하고,
+   골격 검증 + persona_fit 4.9-5.0인 v3-v5 데이터만으로 학습 셋을 재구성 (6,056행 = curated
+   3,356 + refusal 1,200 + v2_schedule 표본 1,500).
+2. **프롬프트 loss 마스킹**: 기존 SFT는 ~600토큰 시스템 프롬프트에도 cross-entropy가 걸려
+   학습 신호의 절반 이상이 "프롬프트 암기"에 소모됐다. prompt-completion 포맷 +
+   `completion_only_loss`로 응답 토큰에만 loss를 걸어 학습 밀도를 ~2.5배 올렸다.
+3. **생성 경로 이원화**: OpenAI는 gpt-5.4 계열로 통일하고, Claude Code 하위 에이전트
+   (Sonnet 4.6 / Opus 4.8)가 골격을 채우는 병렬 생성 경로를 추가 — 같은 골격 검증을 통과해야
+   하므로 두 경로의 품질이 수렴한다 (v4 989행, v5 389행, 통과율 97-98%).
+4. **신규 시나리오 3종**: past_split(지난/유효 일정 다수 혼합 분리), no_today(날짜 미상 시
+   '지남' 단정 금지·절대 날짜 상대 정렬), am_escalation(오전 마감+에스컬레이션 urgency=5).
+
+**무엇이 변했나 (held-out 150 실측, dpo_v3 → sft_v4)**
+
+| 지표 | v3 | v4 | 변화 |
+|------|----|----|------|
+| 전 규칙 통과율 (무처리) | 56.7% | **77.3%** | **+20.6%p** |
+| guard rerank | 62.7% | **78.7%** | +16.0%p |
+| past_rank 위반 (지난 일정 상위 배치) | 52건 | **15건** | -71% |
+| dated_mixed 통과 | 38% | **77%** | 날짜 추론이 주 개선 지점 |
+| intraday 통과 | 67% | **87%** | 오전/오후 구분 안정화 |
+| 판사(gpt-5.5) coverage / reasoning | 3 / 2 | **4 / 3** | 종합 3/5 PARTIAL 유지 |
+
+**출력에서 보이는 질적 변화**: 지난 일정 reason이 "어제/지난 X월 X일 마감이 지난" 식으로
+자연화됐고, 오전 마감+에스컬레이션 태스크를 1위로 올리는 경향이 생겼다 (판사가 실행에 따라
+Q2 보고서 우선을 기대하면 consistency 감점 요인이 되기도 — 판사 분산 참고).
+
+**바뀌지 않은 것 (v6 과제)**: dependency_chain 통과율 43% — 체인 연속 배치는 소량 DPO
+(on-policy 228쌍)와 GRPO 파일럿 모두에서 불변. 선호 학습이 아니라 **체인 SFT 데이터 보강**
+(비중 확대 + 4-5단계 긴 체인)이 필요하다는 것이 v4/v5의 결론.
 
 #### DPO v3 학습 지표 (116 steps, 1 epoch, 2026-06-10)
 
