@@ -1,0 +1,872 @@
+{
+  "model": "scheduler",
+  "rerank": true,
+  "total": 150,
+  "clean": 116,
+  "per_scenario": {
+    "dated_mixed": {
+      "n": 53,
+      "violated": 11
+    },
+    "intraday": {
+      "n": 30,
+      "violated": 4
+    },
+    "risk": {
+      "n": 22,
+      "violated": 1
+    },
+    "relative": {
+      "n": 15
+    },
+    "dependency_chain": {
+      "n": 30,
+      "violated": 18
+    }
+  },
+  "per_kind": {
+    "intraday_order": 5,
+    "past_rank": 13,
+    "chain": 32,
+    "none_first": 1,
+    "parse_or_count": 1
+  },
+  "details": [
+    {
+      "idx": 0,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 1,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 2,
+      "scenario": "intraday",
+      "errors": [
+        "오늘 14:00 마감(태스크 2)이 16:00 마감(태스크 4)보다 후순위"
+      ]
+    },
+    {
+      "idx": 3,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 4,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 5,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 4가 유효 태스크보다 상위에 배치됨"
+      ]
+    },
+    {
+      "idx": 6,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 7,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 8,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 9,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 10,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 11,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 2의 dependency가 4 미만",
+        "체인 선행 태스크 4의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 12,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 13,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 14,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 15,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 16,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 17,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 4의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 18,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 19,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 20,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 21,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 22,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 23,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 24,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 25,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 26,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 27,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 28,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 29,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 30,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 4의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 31,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 32,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 33,
+      "scenario": "risk",
+      "errors": [
+        "마감 없는 태스크가 1위에 배치됨"
+      ]
+    },
+    {
+      "idx": 34,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 35,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 1가 유효 태스크보다 상위에 배치됨"
+      ]
+    },
+    {
+      "idx": 36,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 1가 유효 태스크보다 상위에 배치됨",
+        "지난 일정 태스크 1의 urgency/time_constraint가 2 초과"
+      ]
+    },
+    {
+      "idx": 37,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름"
+      ]
+    },
+    {
+      "idx": 38,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 39,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 40,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 41,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 42,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 43,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 44,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 2가 유효 태스크보다 상위에 배치됨",
+        "지난 일정 태스크 2의 urgency/time_constraint가 2 초과"
+      ]
+    },
+    {
+      "idx": 45,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 46,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 선행 태스크 4의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 47,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 48,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 6가 유효 태스크보다 상위에 배치됨",
+        "지난 일정 태스크 6의 urgency/time_constraint가 2 초과"
+      ]
+    },
+    {
+      "idx": 49,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 50,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 51,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 52,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 53,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 54,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크가 연속으로 배치되지 않음",
+        "체인 선행 태스크 1의 dependency가 4 미만",
+        "체인 선행 태스크 2의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 55,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 56,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 57,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 58,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 59,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 60,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 61,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 62,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 63,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 64,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 65,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 66,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 67,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 68,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 69,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 70,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 2가 유효 태스크보다 상위에 배치됨",
+        "지난 일정 태스크 2의 urgency/time_constraint가 2 초과"
+      ]
+    },
+    {
+      "idx": 71,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 72,
+      "scenario": "dated_mixed",
+      "errors": [
+        "오늘 10:00 마감(태스크 2)이 14:00 마감(태스크 6)보다 후순위"
+      ]
+    },
+    {
+      "idx": 73,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 74,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 75,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 4가 유효 태스크보다 상위에 배치됨"
+      ]
+    },
+    {
+      "idx": 76,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 77,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 78,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 79,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 80,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 81,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 82,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 83,
+      "scenario": "dated_mixed",
+      "errors": [
+        "priority_order가 전체 태스크를 정확히 1회씩 포함하지 않음"
+      ]
+    },
+    {
+      "idx": 84,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 85,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 2의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 86,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 87,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 88,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 89,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 90,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 91,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 92,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 93,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 3의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 94,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 95,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 96,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크가 연속으로 배치되지 않음"
+      ]
+    },
+    {
+      "idx": 97,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 98,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 6가 유효 태스크보다 상위에 배치됨"
+      ]
+    },
+    {
+      "idx": 99,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 100,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 101,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 102,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 103,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 104,
+      "scenario": "intraday",
+      "errors": [
+        "오늘 13:00 마감(태스크 6)이 14:00 마감(태스크 3)보다 후순위"
+      ]
+    },
+    {
+      "idx": 105,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 106,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 107,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 108,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 109,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 1의 dependency가 4 미만",
+        "체인 선행 태스크 5의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 110,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 111,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 112,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 113,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 114,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 115,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 116,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 117,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 118,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 119,
+      "scenario": "intraday",
+      "errors": [
+        "오늘 17:00 마감(태스크 6)이 19:00 마감(태스크 1)보다 후순위"
+      ]
+    },
+    {
+      "idx": 120,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름"
+      ]
+    },
+    {
+      "idx": 121,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 122,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 123,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 124,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 125,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 126,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 127,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름"
+      ]
+    },
+    {
+      "idx": 128,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 129,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 130,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 131,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 132,
+      "scenario": "intraday",
+      "errors": [
+        "오늘 11:00 마감(태스크 2)이 13:00 마감(태스크 6)보다 후순위"
+      ]
+    },
+    {
+      "idx": 133,
+      "scenario": "dated_mixed",
+      "errors": [
+        "지난 일정 태스크 4가 유효 태스크보다 상위에 배치됨"
+      ]
+    },
+    {
+      "idx": 134,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 135,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 136,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 137,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 138,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 139,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름"
+      ]
+    },
+    {
+      "idx": 140,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 4의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 141,
+      "scenario": "intraday",
+      "errors": []
+    },
+    {
+      "idx": 142,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 143,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 144,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 145,
+      "scenario": "dependency_chain",
+      "errors": []
+    },
+    {
+      "idx": 146,
+      "scenario": "dated_mixed",
+      "errors": []
+    },
+    {
+      "idx": 147,
+      "scenario": "risk",
+      "errors": []
+    },
+    {
+      "idx": 148,
+      "scenario": "relative",
+      "errors": []
+    },
+    {
+      "idx": 149,
+      "scenario": "dependency_chain",
+      "errors": [
+        "체인 태스크의 순서가 단계 순서와 다름"
+      ]
+    }
+  ]
+}
