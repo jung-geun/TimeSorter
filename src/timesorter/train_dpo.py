@@ -134,7 +134,9 @@ class MemEfficientDPOTrainer(DPOTrainer):
         # [1,T,248K] bf16=566MB; convert_to_fp32 doubles that to 1.13GB → OOM on 12GB.
         raw_model = self.accelerator.unwrap_model(model, keep_fp32_wrapper=False)
 
-        def _forward_half(start: int, end: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        def _forward_half(
+            start: int, end: int, compute_entropy: bool = True
+        ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor]:
             half_kwargs = {k: v[start:end] if isinstance(v, torch.Tensor) else v
                            for k, v in base_kwargs.items()}
             out = raw_model(**half_kwargs)
@@ -142,7 +144,13 @@ class MemEfficientDPOTrainer(DPOTrainer):
             shift_labels = input_ids[start:end, 1:]
             shift_cmask = completion_mask[start:end, 1:]
             per_tok_logps = self._chunked_logps(logits, shift_labels)
-            ent = self._chunked_entropy(logits)
+            # Free logits (566 MB) before entropy to avoid OOM.
+            # Training with GC activations (~263 MB) alive leaves only ~44 MB headroom;
+            # entropy chunks (128 × 248K × 4B = 128 MB) won't fit. Skip in train mode.
+            if compute_entropy:
+                ent = self._chunked_entropy(logits)
+            else:
+                ent = None
             del logits, out
             torch.cuda.empty_cache()
             per_tok_logps[shift_cmask == 0] = 0.0
@@ -173,14 +181,20 @@ class MemEfficientDPOTrainer(DPOTrainer):
                 raise NotImplementedError(f"loss_type '{loss_type}' not supported")
         else:
             # Train: detach-and-re-run to free chosen GC graph before rejected forward.
+            # Entropy skipped (compute_entropy=False): GC activations (~263 MB) + logits
+            # (~566 MB) leave <50 MB headroom; 128-tok entropy chunk needs 128 MB → OOM.
             # Step 1: chosen forward — get value, immediately detach + free GC graph
-            chosen_logps_tmp, chosen_entropy, chosen_cmask = _forward_half(0, half)
+            chosen_logps_tmp, chosen_entropy, chosen_cmask = _forward_half(
+                0, half, compute_entropy=False
+            )
             chosen_val = chosen_logps_tmp.detach().clone()  # scalar values, no graph
             del chosen_logps_tmp
             torch.cuda.empty_cache()  # frees ~263 MB chosen GC activation graph
 
             # Step 2: rejected forward — now has enough headroom
-            rejected_logps, rejected_entropy, rejected_cmask = _forward_half(half, 2 * half)
+            rejected_logps, rejected_entropy, rejected_cmask = _forward_half(
+                half, 2 * half, compute_entropy=False
+            )
             rejected_val = rejected_logps.detach().clone()
 
             # Step 3: compute DPO gradient factors analytically (no allocations)
@@ -246,13 +260,17 @@ class MemEfficientDPOTrainer(DPOTrainer):
         chosen_rewards = self.beta * chosen_logratios.detach()
         rejected_rewards = self.beta * rejected_logratios.detach()
 
-        cat_entropy = torch.cat([chosen_entropy, rejected_entropy], dim=0)
-        cat_cmask = torch.cat([chosen_cmask, rejected_cmask], dim=0)
-        entropy_sum = self.accelerator.gather_for_metrics(
-            (cat_entropy * cat_cmask).sum()
-        ).sum()
-        total_tokens = self.accelerator.gather_for_metrics(cat_cmask.sum()).sum()
-        entropy_val = (entropy_sum / total_tokens).item() if total_tokens > 0 else 0.0
+        # entropy is None in train mode (skipped to avoid OOM; see _forward_half)
+        if chosen_entropy is not None and rejected_entropy is not None:
+            cat_entropy = torch.cat([chosen_entropy, rejected_entropy], dim=0)
+            cat_cmask = torch.cat([chosen_cmask, rejected_cmask], dim=0)
+            entropy_sum = self.accelerator.gather_for_metrics(
+                (cat_entropy * cat_cmask).sum()
+            ).sum()
+            total_tokens = self.accelerator.gather_for_metrics(cat_cmask.sum()).sum()
+            entropy_val = (entropy_sum / total_tokens).item() if total_tokens > 0 else 0.0
+        else:
+            entropy_val = 0.0
         self._metrics[mode]["entropy"].append(entropy_val)
 
         if mode == "train":
