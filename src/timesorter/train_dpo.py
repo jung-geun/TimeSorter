@@ -4,12 +4,175 @@ import argparse
 from dataclasses import asdict
 from pathlib import Path
 
+import torch
+import torch.nn.functional as F
 from trl import DPOConfig, DPOTrainer
+from trl.trainer.utils import entropy_from_logits
 
 from .config import RunConfig
 from .data.loader import load_dpo_dataset, _apply_system_to_dpo
 from .device import detect
 from .model import load_model_and_tokenizer
+
+
+class MemEfficientDPOTrainer(DPOTrainer):
+    """chosen/rejected를 [1,T] 순차 처리하여 [2,T,248K vocab] logits OOM 방지.
+
+    Qwen3.5 vocab 248K로 인해 [2,T,V] logits = 1.1+ GiB → 12GB GPU OOM.
+    각 forward를 [1,T,V] = ~0.56 GiB로 분리, 청킹된 log_softmax로 further reduce.
+
+    한계: sigmoid/ipo/hinge loss만 지원, precompute_ref_log_probs=True 필수, ld_alpha=None.
+    """
+
+    _LOGP_CHUNK = 128  # selective_log_softmax 대신 사용할 청크 크기 (토큰 단위)
+
+    @staticmethod
+    def _chunked_logps(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+        """[B, T, V] logits에서 labels 위치의 log-prob을 청킹하여 OOM 없이 계산.
+
+        standard selective_log_softmax([B,T,V])는 [T,V] row마다 0.56GB 임시 할당 → OOM.
+        이 함수는 chunk_size 토큰씩 처리해 임시 할당을 ~64MB 이하로 제한.
+        """
+        B, T, V = logits.shape
+        chunk = MemEfficientDPOTrainer._LOGP_CHUNK
+        per_token_logps = torch.zeros(B, T, dtype=torch.float32, device=logits.device)
+        for start in range(0, T, chunk):
+            end = min(start + chunk, T)
+            c_logits = logits[:, start:end, :].float()         # [B, c, V]
+            c_logps = F.log_softmax(c_logits, dim=-1)          # [B, c, V]
+            c_labels = labels[:, start:end].clamp(min=0)       # [B, c]
+            gathered = c_logps.gather(-1, c_labels.unsqueeze(-1)).squeeze(-1)  # [B, c]
+            per_token_logps[:, start:end] = gathered
+            del c_logits, c_logps, gathered
+        return per_token_logps
+
+    @staticmethod
+    def _chunked_entropy(logits: torch.Tensor) -> torch.Tensor:
+        """[B, T, V] logits → entropy [B, T], 청킹으로 peak 메모리 64MB 이하."""
+        B, T, V = logits.shape
+        chunk = MemEfficientDPOTrainer._LOGP_CHUNK
+        entropy = torch.zeros(B, T, dtype=torch.float32, device=logits.device)
+        for start in range(0, T, chunk):
+            end = min(start + chunk, T)
+            c = logits[:, start:end, :].float()
+            p = F.softmax(c, dim=-1)
+            lp = F.log_softmax(c, dim=-1)
+            entropy[:, start:end] = -(p * lp).sum(dim=-1)
+            del c, p, lp
+        return entropy
+
+    def _compute_loss(self, model, inputs, return_outputs):  # noqa: ARG002
+        mode = "train" if self.model.training else "eval"
+
+        _non_model_keys = {"completion_mask", "ref_chosen_logps", "ref_rejected_logps"}
+        base_kwargs = {k: v for k, v in inputs.items() if k not in _non_model_keys}
+        base_kwargs["use_cache"] = False
+
+        completion_mask = inputs["completion_mask"]    # [2, T]
+        input_ids = inputs["input_ids"]                # [2, T]
+        half = input_ids.shape[0] // 2                 # == 1 for batch_size=1
+
+        def _forward_half(start: int, end: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+            """[start:end] half forward → (logps [h,T-1], entropy [h,T-1], shift_cmask [h,T-1])."""
+            half_kwargs = {k: v[start:end] if isinstance(v, torch.Tensor) else v
+                           for k, v in base_kwargs.items()}
+            out = model(**half_kwargs)
+            logits = out.logits[:, :-1, :]              # view [h, T-1, V] — NO .contiguous()
+            shift_labels = input_ids[start:end, 1:]     # [h, T-1]
+            shift_cmask = completion_mask[start:end, 1:]  # [h, T-1]
+
+            per_tok_logps = self._chunked_logps(logits, shift_labels)   # [h, T-1], float32
+            ent = self._chunked_entropy(logits)                         # [h, T-1], float32
+            del logits, out
+            torch.cuda.empty_cache()
+            per_tok_logps[shift_cmask == 0] = 0.0
+            logps = per_tok_logps.sum(dim=1)            # [h]
+            return logps, ent, shift_cmask
+
+        # --- chosen forward ---
+        chosen_logps, chosen_entropy, chosen_cmask = _forward_half(0, half)
+        # --- rejected forward ---
+        rejected_logps, rejected_entropy, rejected_cmask = _forward_half(half, 2 * half)
+
+        assert self.precompute_ref_logps, (
+            "MemEfficientDPOTrainer requires precompute_ref_log_probs=True"
+        )
+        ref_chosen_logps = inputs["ref_chosen_logps"].to(chosen_logps)
+        ref_rejected_logps = inputs["ref_rejected_logps"].to(rejected_logps)
+
+        # --- DPO loss (sigmoid; ipo/hinge also handled) ---
+        chosen_logratios = chosen_logps - ref_chosen_logps
+        rejected_logratios = rejected_logps - ref_rejected_logps
+        delta = chosen_logratios - rejected_logratios
+
+        loss_type = self.loss_types[0] if hasattr(self, "loss_types") and self.loss_types else "sigmoid"
+        if loss_type == "sigmoid":
+            per_seq_loss = -F.logsigmoid(self.beta * delta)
+        elif loss_type == "ipo":
+            chosen_avg = chosen_logratios / chosen_cmask.sum(dim=1).clamp(min=1).float()
+            rejected_avg = rejected_logratios / rejected_cmask.sum(dim=1).clamp(min=1).float()
+            per_seq_loss = (chosen_avg - rejected_avg - 1.0 / (2.0 * self.beta)) ** 2
+        elif loss_type == "hinge":
+            per_seq_loss = torch.relu(1 - self.beta * delta)
+        else:
+            raise NotImplementedError(
+                f"MemEfficientDPOTrainer: loss_type='{loss_type}' not supported. "
+                "Use sigmoid/ipo/hinge or set use_liger_kernel=false + precompute_ref_log_probs=true."
+            )
+
+        loss = per_seq_loss.mean()
+
+        # --- metrics (logging only) ---
+        chosen_rewards = self.beta * chosen_logratios.detach()
+        rejected_rewards = self.beta * rejected_logratios.detach()
+
+        # entropy
+        cat_entropy = torch.cat([chosen_entropy, rejected_entropy], dim=0)   # [2, T-1]
+        cat_cmask = torch.cat([chosen_cmask, rejected_cmask], dim=0)          # [2, T-1]
+        entropy_sum = self.accelerator.gather_for_metrics(
+            (cat_entropy * cat_cmask).sum()
+        ).sum()
+        total_tokens = self.accelerator.gather_for_metrics(cat_cmask.sum()).sum()
+        entropy_val = (entropy_sum / total_tokens).item() if total_tokens > 0 else 0.0
+        self._metrics[mode]["entropy"].append(entropy_val)
+
+        # token count
+        if mode == "train":
+            n_tok = self.accelerator.gather_for_metrics(
+                inputs["attention_mask"].sum()
+            ).sum().item()
+            self._total_train_tokens += n_tok
+        self._metrics[mode]["num_tokens"] = [self._total_train_tokens]
+
+        # logits/logps/rewards
+        self._metrics[mode]["logits/chosen"].append(
+            self.accelerator.gather_for_metrics(chosen_logratios.detach()).mean().item()
+        )
+        self._metrics[mode]["logits/rejected"].append(
+            self.accelerator.gather_for_metrics(rejected_logratios.detach()).mean().item()
+        )
+        self._metrics[mode]["logps/chosen"].append(
+            self.accelerator.gather_for_metrics(chosen_logps.detach()).mean().item()
+        )
+        self._metrics[mode]["logps/rejected"].append(
+            self.accelerator.gather_for_metrics(rejected_logps.detach()).mean().item()
+        )
+        self._metrics[mode]["rewards/chosen"].append(
+            self.accelerator.gather_for_metrics(chosen_rewards).mean().item()
+        )
+        self._metrics[mode]["rewards/rejected"].append(
+            self.accelerator.gather_for_metrics(rejected_rewards).mean().item()
+        )
+        reward_acc = (chosen_rewards > rejected_rewards).float()
+        self._metrics[mode]["rewards/accuracies"].append(
+            self.accelerator.gather_for_metrics(reward_acc).mean().item()
+        )
+        margin = chosen_rewards - rejected_rewards
+        self._metrics[mode]["rewards/margins"].append(
+            self.accelerator.gather_for_metrics(margin).mean().item()
+        )
+
+        return loss
 
 
 def _load_dotenv() -> None:
@@ -107,7 +270,8 @@ def main(config_path: str) -> None:
 
     dpo_cfg = DPOConfig(**training_kwargs)
 
-    trainer = DPOTrainer(
+    # MemEfficientDPOTrainer: [2,T,248K vocab] logits OOM → chosen/rejected 순차 [1,T] 처리
+    trainer = MemEfficientDPOTrainer(
         model=model,
         ref_model=None,  # PEFT adapter-disable 트릭으로 메모리 절감
         args=dpo_cfg,

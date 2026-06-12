@@ -1,6 +1,7 @@
 # Stage 3 DPO v5 (Qwen3.5-4B) — on-policy + hard tier, sft_q35_4b_v4 베이스, RTX 12GB
 # 주의: on-policy 쌍(data/dpo_pairs_v5.parquet의 onpolicy 카테고리)은 Qwen3 모델의 오류로
 # 수집된 것 — Qwen3.5 학습 후 gen_onpolicy_pairs.py로 재수집해 교체 권장.
+# OOM fix: liger_kernel 적용(메모리 ~60% 감소) — 2×max_length×248K vocab logits 텐서 OOM 대응
 model_name: Qwen/Qwen3.5-4B
 sft_adapter: outputs/sft_q35_4b_v4
 dataset: data/dpo_pairs_v5.parquet
@@ -20,8 +21,8 @@ training_args:
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 32
   num_train_epochs: 1
-  max_length: 1280          # Qwen3.5 vocab 248K logits — 1536:1.52GB OOM, 1280:1.27GB ギリOK
-  precompute_ref_log_probs: true
+  max_length: 1280          # Qwen3.5 vocab 248K — MemEfficientDPOTrainer로 logits OOM 해결
+  precompute_ref_log_probs: true   # precompute는 [1,T]씩 처리 → OOM 없음; training은 MemEfficient
   precompute_ref_batch_size: 1
   beta: 0.1
   learning_rate: 5.0e-7
