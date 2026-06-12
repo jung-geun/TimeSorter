@@ -50,17 +50,17 @@ def analyze_dataset():
     
     if ages:
         ages = np.array(ages)
-        print(f"나이 분포:")
+        print("나이 분포:")
         print(f"  - 평균: {ages.mean():.1f}세")
         print(f"  - 최소: {ages.min()}세")
         print(f"  - 최대: {ages.max()}세")
-        print(f"  - 연령대 분포:")
+        print("  - 연령대 분포:")
         age_groups = Counter((ages // 10) * 10)
         for g, count in sorted(age_groups.items()):
             print(f"    * {g}대: {count}명 ({count/len(ages)*100:.1f}%)")
 
     if occupations:
-        print(f"\n가장 흔한 직업 Top 10:")
+        print("\n가장 흔한 직업 Top 10:")
         occ_counts = Counter(occupations)
         for occ, count in occ_counts.most_common(10):
             print(f"  - {occ}: {count}명")

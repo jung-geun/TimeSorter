@@ -226,7 +226,7 @@ def main() -> None:
     header = (
         "# 한국어 데이터셋 분석 리포트\n\n"
         "> 생성 스크립트: `scripts/gen_dataset_report.py`  \n"
-        f"> 대상: `data/scheduler_ko.parquet` (SFT) + `data/dpo_pairs.parquet` (DPO)"
+        "> 대상: `data/scheduler_ko.parquet` (SFT) + `data/dpo_pairs.parquet` (DPO)"
     )
 
     sections = [
