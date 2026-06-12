@@ -73,7 +73,7 @@ class MemEfficientDPOTrainer(DPOTrainer):
         model_kwargs = {k: v for k, v in inputs.items() if k not in _non_model_keys}
         model_kwargs["use_cache"] = False
 
-        raw_model = self.accelerator.unwrap_model(self.model)
+        raw_model = self.accelerator.unwrap_model(self.model, keep_fp32_wrapper=False)
         input_ids = inputs["input_ids"]
         completion_mask = inputs["completion_mask"]
         half = input_ids.shape[0] // 2
@@ -130,9 +130,9 @@ class MemEfficientDPOTrainer(DPOTrainer):
         ref_chosen_logps = inputs["ref_chosen_logps"].float()
         ref_rejected_logps = inputs["ref_rejected_logps"].float()
 
-        # Unwrap accelerate model to bypass convert_to_fp32 on logit outputs.
+        # keep_fp32_wrapper=False strips accelerate's convert_to_fp32 hook from forward.
         # [1,T,248K] bf16=566MB; convert_to_fp32 doubles that to 1.13GB → OOM on 12GB.
-        raw_model = self.accelerator.unwrap_model(model)
+        raw_model = self.accelerator.unwrap_model(model, keep_fp32_wrapper=False)
 
         def _forward_half(start: int, end: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
             half_kwargs = {k: v[start:end] if isinstance(v, torch.Tensor) else v
