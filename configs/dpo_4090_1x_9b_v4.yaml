@@ -1,13 +1,14 @@
 # Stage 3 DPO v4 (Qwen3.5-9B) — RTX 4090 단일 GPU 0, 4bit QLoRA
 # on-policy 쌍(dpo_pairs_v4_extra) 기반. sft_4090_1x_9b_v4 완료 후 실행.
 # 실행:
-#   CUDA_VISIBLE_DEVICES=0 uv run python scripts/train_dpo.py --config configs/dpo_4090_1x_9b_v4.yaml
+#   PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUDA_VISIBLE_DEVICES=0 \
+#     uv run python scripts/train_dpo.py --config configs/dpo_4090_1x_9b_v4.yaml
 model_name: Qwen/Qwen3.5-9B
 sft_adapter: outputs/sft_4090_1x_9b_v4
 dataset: data/dpo_pairs_v4_extra.parquet
 output_dir: outputs/dpo_4090_1x_9b_v4
 max_samples: null
-max_prompt_len: 800
+max_prompt_len: 300
 schema_version: "v3"
 wandb_run_name: dpo_4090_1x_9b_v4
 
@@ -21,12 +22,14 @@ training_args:
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 32  # eff_batch 32
   num_train_epochs: 1
-  max_length: 1536
+  max_length: 1280              # 1536 OOM → 1280으로 축소 (활성화 메모리 ~31% 절감, 시퀀스^2 스케일)
   precompute_ref_log_probs: true    # 9B ref forward를 사전 계산 — 피크 메모리 절감
   precompute_ref_batch_size: 1
   beta: 0.1
   learning_rate: 5.0e-7
   gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
   warmup_ratio: 0.05
   lr_scheduler_type: "cosine"
   logging_steps: 10
