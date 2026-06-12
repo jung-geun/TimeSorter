@@ -1,0 +1,37 @@
+# Stage 2 SFT v4 (Qwen3.5-9B) — RTX 4090 단일 GPU 0, 4bit QLoRA
+# 9B 모델은 bf16 LoRA만으로 24GB에 맞지 않음 (weights ~18GB + optimizer) — 4bit QLoRA 필수
+# 실행:
+#   CUDA_VISIBLE_DEVICES=0 uv run python scripts/train_sft.py --config configs/sft_4090_1x_9b_v4.yaml
+model_name: Qwen/Qwen3.5-9B
+dataset: data/sft_v4_train.parquet
+output_dir: outputs/sft_4090_1x_9b_v4
+max_samples: null
+ko_ultrafeedback_n: 0
+max_seq_length: 1536        # 9B + 24GB: Qwen3.5 vocab 248K — 2048은 logits OOM 위험
+schema_version: "v3"
+prompt_completion: true     # v4: completion_only_loss (시스템·유저 프롬프트 loss 제거)
+wandb_run_name: sft_4090_1x_9b_v4
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true            # 9B는 24GB에서 bf16 LoRA 불가 — NF4 4bit 필수
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32  # eff_batch 32
+  num_train_epochs: 3
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  packing: true
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

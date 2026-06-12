@@ -1,0 +1,37 @@
+# Stage 3 DPO v4 (Qwen3.5-9B) — RTX 4090 단일 GPU 0, 4bit QLoRA
+# on-policy 쌍(dpo_pairs_v4_extra) 기반. sft_4090_1x_9b_v4 완료 후 실행.
+# 실행:
+#   CUDA_VISIBLE_DEVICES=0 uv run python scripts/train_dpo.py --config configs/dpo_4090_1x_9b_v4.yaml
+model_name: Qwen/Qwen3.5-9B
+sft_adapter: outputs/sft_4090_1x_9b_v4
+dataset: data/dpo_pairs_v4_extra.parquet
+output_dir: outputs/dpo_4090_1x_9b_v4
+max_samples: null
+max_prompt_len: 800
+schema_version: "v3"
+wandb_run_name: dpo_4090_1x_9b_v4
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true            # 9B: 24GB에서 ref forward 동시 수행 여유 없음 — precompute 필수
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32  # eff_batch 32
+  num_train_epochs: 1
+  max_length: 1536
+  precompute_ref_log_probs: true    # 9B ref forward를 사전 계산 — 피크 메모리 절감
+  precompute_ref_batch_size: 1
+  beta: 0.1
+  learning_rate: 5.0e-7
+  gradient_checkpointing: true
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"
