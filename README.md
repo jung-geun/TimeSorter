@@ -1,6 +1,6 @@
 # TimeSorter — 한국어 할 일 우선순위 정렬 비서
 
-> **Qwen3.5-4B / 9B**를 한국어 일정 관리 태스크에 특화 파인튜닝하는 SFT → DPO 2단계 파이프라인.
+> **Qwen3-4B-Instruct-2507**을 한국어 일정 관리 태스크에 특화 파인튜닝하는 SFT → DPO(→GRPO) 파이프라인.
 > 사용자가 제출한 할 일 목록을 **긴급도·중요도·의존성·시간 제약** 4축으로 채점해 우선순위를 결정합니다.
 
 ---
@@ -126,7 +126,8 @@
 
 | 항목 | 값 |
 |------|----|
-| 베이스 모델 | Qwen/Qwen3.5-4B (기본), Qwen/Qwen3.5-9B (DGX) |
+| 베이스 모델 | **Qwen/Qwen3-4B-Instruct-2507** (학습·서빙 실사용), Qwen3-8B급 (DGX 계획) |
+| 표기 주의 | 구버전 configs의 "Qwen3.5-4B"는 오기 — 모든 어댑터의 실제 베이스는 Qwen3-4B-Instruct-2507 (adapter_config.json 확인) |
 | 어댑터 | LoRA (r=16, alpha=32) |
 | 학습 단계 | Stage 1: SFT → Stage 2: DPO |
 | DPO trick | `ref_model=None` PEFT 트릭으로 메모리 절감 |
@@ -367,7 +368,7 @@ rejected: 1) 계약서 작성(dep=3) 5) 법무팀 검토(dep=1) 9) 서명(dep=1)
 |------|------|----------|
 | 오늘 날짜 주입 표준화 | system prompt에 `오늘: {date}` 필드를 고정 위치에 배치, 학습·추론 동일 포맷 적용 | 날짜 혼동 근본 해결 |
 | 컨텍스트 윈도우 확장 | max_seq_length 2048 → 4096, 12GB VRAM에서 grad_accum 64로 보완 | 긴 이메일 5건 + JSON 응답 완전 수용 |
-| 9B 모델 실험 | DGX 환경에서 Qwen3.5-9B SFT+DPO 실행 | 추론 깊이 향상 |
+| 상위 모델 실험 | DGX 환경에서 Qwen3-8B급 SFT+DPO 실행 | 추론 깊이 향상 |
 
 ### 장기 개선 (v1.0)
 
@@ -524,7 +525,7 @@ HF_HOME=models          # 로컬 모델 캐시 (프로젝트 내 저장)
 
 ```bash
 make download          # HF 데이터셋 다운로드
-make download-models   # Qwen3.5-2B / 4B / 9B 가중치 캐싱
+make download-models   # Qwen3-4B-Instruct-2507 가중치 캐싱
 ```
 
 → 상세: [docs/DATASET.md](docs/DATASET.md)
@@ -578,7 +579,7 @@ make validate   # GPT 판사 교차 검증
 src/timesorter/
 ├── device.py        — VRAM 감지 + auto_batch_config
 ├── config.py        — YAML → RunConfig
-├── model.py         — Qwen3.5 로딩 + LoRA / DDP 대응
+├── model.py         — Qwen3 로딩 + LoRA / DDP 대응
 ├── data/
 │   ├── loader.py    — HF 데이터셋 / parquet → DPO 포맷
 │   ├── scheduler.py — SFT 데이터 → ChatML (v1/v2 분기)
