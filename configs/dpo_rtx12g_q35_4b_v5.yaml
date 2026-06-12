@@ -6,7 +6,7 @@ sft_adapter: outputs/sft_q35_4b_v4
 dataset: data/dpo_pairs_v5.parquet
 output_dir: outputs/dpo_q35_4b_v5
 max_samples: null
-max_prompt_len: 800
+max_prompt_len: 700           # system_prompt(~600tok)+user(~85tok)≈685 — 응답 예산 580tok
 schema_version: "v3"
 wandb_run_name: dpo_q35_4b_v5
 
@@ -20,7 +20,7 @@ training_args:
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 32
   num_train_epochs: 1
-  max_length: 1536
+  max_length: 1280          # Qwen3.5 vocab 248K logits — 1536:1.52GB OOM, 1280:1.27GB ギリOK
   precompute_ref_log_probs: true
   precompute_ref_batch_size: 1
   beta: 0.1
