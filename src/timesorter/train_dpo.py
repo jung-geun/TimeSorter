@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as F
 from trl import DPOConfig, DPOTrainer
 from trl.trainer.utils import entropy_from_logits
+from trl.models.utils import disable_gradient_checkpointing
 
 from .config import RunConfig
 from .data.loader import load_dpo_dataset, _apply_system_to_dpo
@@ -60,6 +61,46 @@ class MemEfficientDPOTrainer(DPOTrainer):
             entropy[:, start:end] = -(p * lp).sum(dim=-1)
             del c, p, lp
         return entropy
+
+    def compute_ref_log_probs(self, inputs):
+        """Sequential half-batch ref forward to avoid [B,T,248K] fp32 OOM during precompute.
+
+        TRL's default calls self.model (accelerate-wrapped) which auto-converts outputs to fp32,
+        causing [2,T,248448]×4B ≈ 2.56 GiB allocation. This override calls the UNWRAPPED model
+        directly (bf16 output) and processes chosen/rejected halves one at a time.
+        """
+        _non_model_keys = {"completion_mask", "ref_chosen_logps", "ref_rejected_logps"}
+        model_kwargs = {k: v for k, v in inputs.items() if k not in _non_model_keys}
+        model_kwargs["use_cache"] = False
+
+        raw_model = self.accelerator.unwrap_model(self.model)
+        input_ids = inputs["input_ids"]
+        completion_mask = inputs["completion_mask"]
+        half = input_ids.shape[0] // 2
+
+        def _ref_half(start: int, end: int) -> torch.Tensor:
+            half_kw = {k: v[start:end] if isinstance(v, torch.Tensor) else v
+                       for k, v in model_kwargs.items()}
+            with torch.no_grad(), disable_gradient_checkpointing(
+                self.model, self.args.gradient_checkpointing_kwargs
+            ):
+                if hasattr(raw_model, "disable_adapter"):
+                    with raw_model.disable_adapter():
+                        out = raw_model(**half_kw)
+                else:
+                    out = raw_model(**half_kw)
+            logits = out.logits[:, :-1, :]                      # [1, T-1, V] bf16
+            shift_labels = input_ids[start:end, 1:]
+            shift_cmask = completion_mask[start:end, 1:]
+            per_tok = self._chunked_logps(logits, shift_labels)  # [1, T-1]
+            del logits, out
+            torch.cuda.empty_cache()
+            per_tok[shift_cmask == 0] = 0.0
+            return per_tok.sum(dim=1)                            # [1]
+
+        ref_chosen_logps = _ref_half(0, half)
+        ref_rejected_logps = _ref_half(half, 2 * half)
+        return ref_chosen_logps, ref_rejected_logps
 
     def _compute_loss(self, model, inputs, return_outputs):  # noqa: ARG002
         """Detach-and-re-run: frees chosen GC graph before rejected forward to avoid OOM.
