@@ -6,7 +6,7 @@ dataset: data/sft_v4_train.parquet
 output_dir: outputs/sft_q35_4b_v4
 max_samples: null
 ko_ultrafeedback_n: 0
-max_seq_length: 2048
+max_seq_length: 1536        # Qwen3.5 vocab 248K — 2048은 12GB에서 logits OOM
 schema_version: "v3"
 prompt_completion: true
 wandb_run_name: sft_q35_4b_v4

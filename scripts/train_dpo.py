@@ -18,6 +18,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from timesorter.train_dpo import main
 
+
+
+def _stop_serving_container() -> None:
+    """학습 전 검증용 vLLM 컨테이너(timesorter-serve)를 자동 중지 — GPU 단독 점유 규칙."""
+    import subprocess
+    try:
+        out = subprocess.run(["docker", "ps", "--format", "{{.Names}}"],
+                             capture_output=True, text=True, timeout=10).stdout
+        if "timesorter-serve" in out:
+            print("[GPU] 검증 컨테이너 timesorter-serve 중지 후 학습 시작")
+            subprocess.run(["docker", "stop", "timesorter-serve"], timeout=60)
+            import time
+            time.sleep(3)
+    except Exception:
+        pass  # docker 미설치 환경(Mac/DGX 베어메탈)은 무시
+
+
+_stop_serving_container()
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TimeSorter DPO 학습")
     parser.add_argument("--config", default="configs/dpo_rtx12g_q35_4b_v5.yaml",
