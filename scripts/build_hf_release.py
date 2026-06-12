@@ -75,6 +75,8 @@ dpo = pd.concat([
     norm(pd.read_parquet("data/dpo_pairs_v2.parquet"), "v2", DPO_COLS),
     norm(pd.read_parquet("data/dpo_pairs_v3.parquet"), "v3", DPO_COLS),
     norm(pd.read_parquet("data/dpo_pairs_v4_extra.parquet"), "v4", DPO_COLS),
+    # v5 on-policy: sft_v4 모델이 실제로 위반한 출력을 rejected로 수집한 쌍
+    norm(pd.read_parquet("data/dpo_pairs_v5_onpolicy.parquet"), "v5", DPO_COLS),
 ], ignore_index=True)
 before = len(dpo)
 dpo = dpo.drop_duplicates(subset=["prompt", "chosen", "rejected"]).reset_index(drop=True)
@@ -87,6 +89,8 @@ def _tier(row) -> str:
     src = str(row["source"])
     if src.startswith("refusal") or "refusal" in str(row["category"]):
         return "refusal"              # 거부 능력 유지 — 항상 소량 혼합
+    if str(row["category"]) == "onpolicy":
+        return "hard"                 # on-policy — 모델 실제 오류, 최우선 권장
     if row["version"] in ("v3", "v4") and str(row["source"]).startswith(("v3_", "v4_")):
         return "hard"                 # 내용 오류 negative — 본 학습 권장
     return "easy_format"              # v2 형식·단순 negative — 길이 편향 주의
