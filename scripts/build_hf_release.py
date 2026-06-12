@@ -1,15 +1,20 @@
 #!/usr/bin/env python
-"""HF 릴리스 통합 빌드 — v1~v4 전체 데이터를 용도별(SFT/DPO/GRPO/eval)로 통합.
+"""HF 릴리스 통합 빌드 — v1~v5+ 전체 데이터를 용도별(SFT/DPO/GRPO/eval)로 통합.
 
 출력 (data/hf_release/):
-  sft_train.parquet      v2+v3+v4 JSON 스키마 통합 (중복 prompt 제거, version 컬럼)
+  sft_train.parquet      v2+v3+v4+v5+rework JSON 스키마 통합 (중복 prompt 제거, version 컬럼)
   sft_v1_text.parquet    v1 자유 텍스트 합본 (포맷이 달라 별도 config)
-  dpo_train.parquet      v1~v4 DPO 쌍 통합 (중복 쌍 제거)
+  dpo_train.parquet      v1~v5 DPO 쌍 통합 (중복 쌍 제거)
   grpo_train.parquet     골격(meta) 보유 행 전체 — GRPO 검증 가능 보상용
   eval_heldout.parquet   held-out 평가셋 (seed 47, 학습 미사용)
+
+새 데이터셋 추가 시 이 파일만 수정 후 재실행:
+  uv run python scripts/build_hf_release.py
+  uv run python scripts/upload_hf_dataset.py
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -27,14 +32,28 @@ def norm(df: pd.DataFrame, version: str, cols: list[str]) -> pd.DataFrame:
     return d[cols + ["version"]]
 
 
-# ── SFT (JSON 스키마 v2~v4) ───────────────────────────────────────────────────
+def load_if_exists(path: str, version: str, cols: list[str]) -> pd.DataFrame | None:
+    """파일이 있을 때만 로드 (재가공 중인 데이터셋용)."""
+    if os.path.exists(path):
+        df = pd.read_parquet(path)
+        print(f"  + {path}: {len(df):,}행")
+        return norm(df, version, cols)
+    return None
+
+
+# ── SFT (JSON 스키마 v2~v5+rework) ───────────────────────────────────────────
 SFT_COLS = ["prompt", "chosen", "persona", "today", "source", "meta"]
-sft = pd.concat([
+_sft_parts = [
     norm(pd.read_parquet("data/scheduler_v2_combined.parquet"), "v2", SFT_COLS),
     norm(pd.read_parquet("data/scheduler_v3.parquet"), "v3", SFT_COLS),
     norm(pd.read_parquet("data/scheduler_v4_extra.parquet"), "v4", SFT_COLS),
     norm(pd.read_parquet("data/scheduler_v5_claude.parquet"), "v5", SFT_COLS),
-], ignore_index=True)
+]
+# v1/v2 재가공 데이터 — assemble_rework_rows.py 완료 시 자동 포함
+_rework = load_if_exists("data/scheduler_rework_v1v2.parquet", "v6_rework", SFT_COLS)
+if _rework is not None:
+    _sft_parts.append(_rework)
+sft = pd.concat(_sft_parts, ignore_index=True)
 before = len(sft)
 sft = sft.drop_duplicates(subset=["prompt"]).reset_index(drop=True)
 
@@ -44,7 +63,7 @@ _v2_src_map = dict(zip(_v2_src["prompt"], _v2_src["source"]))
 
 
 def _sft_tier(row) -> str:
-    if row["version"] in ("v3", "v4", "v5"):
+    if row["version"] in ("v3", "v4", "v5", "v6_rework"):
         return "curated"            # 골격 검증 + persona_fit 4.9-5.0
     src = str(_v2_src_map.get(row["prompt"], ""))
     if src.startswith("refusal"):

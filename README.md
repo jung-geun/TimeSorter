@@ -527,6 +527,21 @@ uv run python scripts/validate_schedule.py \
 
 학습에 쓰지 않은 seed로 생성한 held-out. `eval_scheduler.py`가 골격 규칙로 $0 자동 채점 — 모든 어댑터 비교의 기준.
 
+### 데이터셋 갱신 절차 (새 데이터 추가 시)
+
+새 parquet 파일이 `data/` 에 추가될 때마다 아래 두 단계로 HF를 갱신한다:
+
+```bash
+# 1. HF 릴리스 재빌드 (data/hf_release/ 갱신)
+uv run python scripts/build_hf_release.py
+
+# 2. HuggingFace 업로드
+uv run python scripts/upload_hf_dataset.py
+```
+
+`build_hf_release.py`는 `data/scheduler_rework_v1v2.parquet` 등 선택적 파일이 존재하면
+자동으로 포함시키므로, 파일만 추가하고 위 두 명령을 재실행하면 된다.
+
 ---
 
 ## 학습 · 실행 · 검증 가이드

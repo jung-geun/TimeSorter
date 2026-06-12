@@ -21,6 +21,9 @@ data/*.ckpt.jsonl
 outputs/.ckpt_*.jsonl
 outputs/.api_cache*.jsonl
 
+# HF 릴리스 빌드 산출물 (build_hf_release.py 로 재생성)
+data/hf_release/
+
 # HuggingFace 모델 로컬 캐시 (make download-models 으로 재생성)
 models/
 

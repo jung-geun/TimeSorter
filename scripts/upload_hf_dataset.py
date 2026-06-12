@@ -4,14 +4,19 @@
 선행: uv run python scripts/build_hf_release.py  (data/hf_release/ 생성)
 
 repo 구조 (용도별 분리 + 뷰어 configs):
-  data/sft_train.parquet      SFT 본 학습 (v2~v4 JSON 스키마, 13.9K)
+  data/sft_train.parquet      SFT 본 학습 (v2~v5+rework JSON 스키마)
   data/sft_v1_text.parquet    v1 자유 텍스트 (별도 포맷, 6.0K)
-  data/dpo_train.parquet      DPO 쌍 v1~v4 통합 (21.0K)
-  data/grpo_train.parquet     GRPO 프롬프트+골격 meta (3.0K)
+  data/dpo_train.parquet      DPO 쌍 v1~v5 통합
+  data/grpo_train.parquet     GRPO 프롬프트+골격 meta
   data/eval_heldout.parquet   held-out 평가 (150, seed 47)
+
+새 데이터셋 추가 후 갱신 절차:
+  1. uv run python scripts/build_hf_release.py   # data/hf_release/ 재빌드
+  2. uv run python scripts/upload_hf_dataset.py  # HF 업로드
 
 사용:
   uv run python scripts/upload_hf_dataset.py --repo pieroot/timesorter-scheduler-ko
+  uv run python scripts/upload_hf_dataset.py --card-only  # README만 갱신
 """
 from __future__ import annotations
 
