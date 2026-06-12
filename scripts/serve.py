@@ -60,7 +60,7 @@ def list_models(url: str = BASE_URL) -> None:
 
 def serve_local(
     adapter: str,
-    model: str = "Qwen/Qwen3-4B-Instruct-2507",
+    model: str = "Qwen/Qwen3.5-4B",
     lora_name: str = "scheduler",
     max_model_len: int = 2048,
     gpu_mem_util: float = 0.85,
@@ -86,7 +86,7 @@ def serve_local(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--adapter", default="outputs/dpo_rtx12g_4b")
-    parser.add_argument("--model", default="Qwen/Qwen3-4B-Instruct-2507")
+    parser.add_argument("--model", default="Qwen/Qwen3.5-4B")
     parser.add_argument("--lora-name", default="scheduler")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--gpu-mem-util", type=float, default=0.85)

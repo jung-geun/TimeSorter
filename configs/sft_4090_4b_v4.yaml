@@ -1,0 +1,36 @@
+# Stage 2 SFT v4 (Qwen3.5-4B) — RTX 4090 단일 24GB, bf16 LoRA (4bit 불필요)
+# 기존 4090×2 DDP(accelerate launch) 구성을 단일 GPU로 대체 — launcher 없이 바로 실행:
+#   uv run python scripts/train_sft.py --config configs/sft_4090_4b_v4.yaml
+model_name: Qwen/Qwen3.5-4B
+dataset: data/sft_v4_train.parquet
+output_dir: outputs/sft_q35_4b_v4
+max_samples: null
+ko_ultrafeedback_n: 0
+max_seq_length: 2048
+schema_version: "v3"
+prompt_completion: true
+wandb_run_name: sft_q35_4b_v4_4090
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: false                # 24GB: bf16 LoRA 직접 학습
+
+training_args:
+  per_device_train_batch_size: 2   # 23.5GB 실측 한계 (bs4 OOM — 2x 시절 기록)
+  gradient_accumulation_steps: 16  # eff_batch 32 유지
+  num_train_epochs: 3
+  learning_rate: 2.0e-5
+  bf16: true
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  packing: true
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 4

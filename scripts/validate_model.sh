@@ -32,14 +32,17 @@ if [ "$MODE" = "local" ]; then
   exit 0
 fi
 
-echo "=== docker(vLLM) 서빙 검증: $ADAPTER ==="
+# 어댑터가 기록한 실제 베이스 모델 사용 (Qwen3 구세대/Qwen3.5 신세대 어댑터 모두 호환)
+BASE_MODEL=$(uv run python -c "import json;print(json.load(open('$ADAPTER/adapter_config.json'))['base_model_name_or_path'])")
+SERVE_IMAGE="${SERVE_IMAGE:-vllm/vllm-openai:latest}"   # Qwen3.5는 v0.8.5 미지원
+echo "=== docker(vLLM) 서빙 검증: $ADAPTER (base: $BASE_MODEL) ==="
 docker stop timesorter-serve 2>/dev/null && sleep 3 || true
 
 docker run -d --name timesorter-serve --rm --gpus all \
   -v "$PWD/models:/root/.cache/huggingface" \
   -v "$PWD/outputs:/workspace/outputs" \
-  -p "$PORT:8000" vllm/vllm-openai:v0.8.5 \
-  --model Qwen/Qwen3-4B-Instruct-2507 --enable-lora \
+  -p "$PORT:8000" "$SERVE_IMAGE" \
+  --model "$BASE_MODEL" --enable-lora \
   --lora-modules "scheduler=/workspace/$ADAPTER" \
   --dtype bfloat16 --max-model-len 4096 --gpu-memory-utilization 0.85 \
   --max-lora-rank 16 --host 0.0.0.0 --port 8000 >/dev/null

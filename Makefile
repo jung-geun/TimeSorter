@@ -4,7 +4,7 @@ export HF_HOME ?= $(CURDIR)/models
         download download-models \
         sft-rtx12g-4b dpo-rtx12g-4b pipeline-rtx12g-4b \
         sft-rtx12g-4b-v2 dpo-rtx12g-4b-v2 pipeline-rtx12g-4b-v2 \
-        sft-4090-2x-4b dpo-4090-2x-4b pipeline-4090-2x-4b \
+        sft-4090-4b dpo-4090-4b pipeline-4090-4b \
         sft-4090-2x-4b-v2 dpo-4090-2x-4b-v2 pipeline-4090-2x-4b-v2 \
         sft-auto dpo-auto pipeline-auto \
         sft-auto-v2 dpo-auto-v2 pipeline-auto-v2 \
@@ -104,17 +104,15 @@ dpo-rtx12g-4b-v3:
 
 pipeline-rtx12g-4b-v3: sft-rtx12g-4b-v3 dpo-rtx12g-4b-v3
 
-# RTX 4090 × 2 (24GB × 2) — bf16 LoRA, DDP 2-GPU
-# 실행 전: pip install accelerate 확인
-sft-4090-2x-4b:
-	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
-	  -m timesorter.train_sft --config configs/sft_4090_2x_4b.yaml
+# RTX 4090 단일 24GB — bf16 LoRA (구 2×DDP 구성은 단일 GPU로 대체)
+sft-4090-4b:
+	uv run python -m timesorter.train_sft --config configs/sft_4090_4b_v4.yaml
 
-dpo-4090-2x-4b:
-	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
-	  -m timesorter.train_dpo --config configs/dpo_4090_2x_4b.yaml
+dpo-4090-4b:
+	uv run python -m timesorter.train_dpo --config configs/dpo_4090_4b_v5.yaml
 
-pipeline-4090-2x-4b: sft-4090-2x-4b dpo-4090-2x-4b
+pipeline-4090-4b: sft-4090-4b dpo-4090-4b
+
 
 sft-4090-2x-4b-v2:
 	uv run accelerate launch --config_file configs/accelerate_4090_2x.yaml \
@@ -213,8 +211,8 @@ docker-shell:
 	$(DOCKER_IMAGE) bash
 
 # ── vLLM 서빙 ────────────────────────────────────────────────────────────────
-SERVE_IMAGE   ?= vllm/vllm-openai:v0.8.5
-BASE_MODEL    ?= Qwen/Qwen3-4B-Instruct-2507
+SERVE_IMAGE   ?= vllm/vllm-openai:latest   # Qwen3.5 아키텍처 지원 필요 (v0.8.5는 Qwen3 전용)
+BASE_MODEL    ?= Qwen/Qwen3.5-4B
 ADAPTER       ?= outputs/dpo_rtx12g_4b
 LORA_NAME     ?= scheduler
 SERVE_PORT    ?= 8000

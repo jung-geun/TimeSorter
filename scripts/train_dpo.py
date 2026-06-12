@@ -20,7 +20,7 @@ from timesorter.train_dpo import main
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TimeSorter DPO 학습")
-    parser.add_argument("--config", default="configs/dpo_rtx12g_4b_v5.yaml",
+    parser.add_argument("--config", default="configs/dpo_rtx12g_q35_4b_v5.yaml",
                         help="YAML 설정 (기본: RTX 12GB v5 on-policy)")
     args = parser.parse_args()
     main(args.config)

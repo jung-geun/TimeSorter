@@ -1,0 +1,34 @@
+# Stage 2 SFT v4 (Qwen3.5-4B) — curated 데이터 + 프롬프트 loss 마스킹, RTX 12GB QLoRA
+# 프로젝트 목표 베이스(Qwen3.5)로의 재학습. 이전 어댑터는 Qwen3-4B-Instruct-2507 기반이라
+# 이어 학습 불가 — 신규 LoRA로 시작 (sft_adapter 없음).
+model_name: Qwen/Qwen3.5-4B
+dataset: data/sft_v4_train.parquet
+output_dir: outputs/sft_q35_4b_v4
+max_samples: null
+ko_ultrafeedback_n: 0
+max_seq_length: 2048
+schema_version: "v3"
+prompt_completion: true
+wandb_run_name: sft_q35_4b_v4
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  num_train_epochs: 3            # 신규 LoRA(이어 학습 아님)라 v4의 2ep보다 1ep 추가
+  learning_rate: 2.0e-5          # 신규 시작 — v2/v3 초기 학습과 동일
+  gradient_checkpointing: true
+  packing: true
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

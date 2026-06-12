@@ -1,0 +1,38 @@
+# Stage 3 DPO v5 (Qwen3.5-4B) — on-policy + hard tier, sft_q35_4b_v4 베이스, RTX 12GB
+# 주의: on-policy 쌍(data/dpo_pairs_v5.parquet의 onpolicy 카테고리)은 Qwen3 모델의 오류로
+# 수집된 것 — Qwen3.5 학습 후 gen_onpolicy_pairs.py로 재수집해 교체 권장.
+model_name: Qwen/Qwen3.5-4B
+sft_adapter: outputs/sft_q35_4b_v4
+dataset: data/dpo_pairs_v5.parquet
+output_dir: outputs/dpo_q35_4b_v5
+max_samples: null
+max_prompt_len: 800
+schema_version: "v3"
+wandb_run_name: dpo_q35_4b_v5
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  num_train_epochs: 1
+  max_length: 1536
+  precompute_ref_log_probs: true
+  precompute_ref_batch_size: 1
+  beta: 0.1
+  learning_rate: 5.0e-7
+  gradient_checkpointing: true
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 5
+  save_strategy: "steps"
+  save_steps: 16
+  save_total_limit: 2
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

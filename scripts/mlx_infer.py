@@ -35,7 +35,7 @@ from timesorter.data.schema import (
     response_to_text,
 )
 
-_BASE_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
+_BASE_MODEL = "Qwen/Qwen3.5-4B"
 
 
 def run(
