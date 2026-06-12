@@ -73,6 +73,72 @@
 | `dpo_pairs_v3.parquet` | 3,722쌍 | hard negative 5종 + v2 replay 1.5K |
 | `scheduler_v3_eval.parquet` | ~150 | held-out 평가셋 (학습 seed 46과 다른 seed 47) |
 
+### v4 — 이중 생성 경로 + 신규 시나리오 3종
+
+v3 골격 검증 파이프라인에 Claude Code 하위 에이전트(Sonnet 4.6 / Opus 4.8) 경로를 추가.
+OpenAI(gpt-5.4-mini 텍스트 + gpt-5.4 chosen)와 Claude가 같은 골격을 채우도록 병렬 실행 →
+두 경로 모두 `verify_chosen()` 통과 필수(통과율 97-98%).
+
+| 파일 | 행 수 | 설명 |
+|------|-------|------|
+| `scheduler_v4_extra.parquet` | 989 | OpenAI(545) + Claude(444) 병렬 생성 — v4 신규 시나리오 4종 |
+| `dpo_pairs_v4_extra.parquet` | 1,978쌍 | hard negative 5종: order_score_mismatch, granularity_swap, date_confusion, past_hallucination, risk_ignore |
+
+**v4 신규 시나리오:**
+
+| 시나리오 | 행 수 | 핵심 학습 신호 |
+|---------|------|--------------|
+| `past_split` | 249 | 지난/유효 일정이 다수 혼합 — 지난 일정은 urgency=1·importance=1로 하위 배치 |
+| `no_today` | 245 | 오늘 날짜 미상 — '지남' 단정 금지, 절대 날짜 있는 것끼리만 비교 |
+| `dated_mixed` | 247 | 절대 날짜·시각이 혼재 — 오늘 기준 날짜 계산 + 시각 순서 동시 요구 |
+| `am_escalation` | 248 | 오전 마감 + 에스컬레이션 리스크 — urgency=5 우선 처리 |
+
+### v5 — on-policy DPO + Claude 의존성 체인 보강
+
+v4의 residual weakness(dependency_chain 43%)를 타깃: Claude 에이전트가 **체인 시나리오 비중을 높여** 재생성하고, SFT v4(Qwen3) 모델의 **실제 출력 오류를 on-policy rejected로** 수집.
+
+| 파일 | 행 수 | 설명 |
+|------|-------|------|
+| `scheduler_v5_claude.parquet` | 389 | Claude Sonnet 4.6 생성 — dependency_chain 비중 대폭 확대 |
+| `dpo_pairs_v5.parquet` | 1,368쌍 | hard negative 6종 + on-policy 228쌍 + past_hallucination 36쌍 |
+| `dpo_pairs_v5_onpolicy.parquet` | 351쌍 | on-policy 전용 파일 (더 많은 체인·dated 오류 포함) |
+
+**v5 SFT 시나리오 분포 (scheduler_v5_claude.parquet):**
+
+| 시나리오 | 행 수 | v4 대비 변화 |
+|---------|------|------------|
+| `dated_mixed` | 78 | 유지 (날짜 계산 복습) |
+| `dependency_chain` | **58** | **v4에서 없었던 시나리오 — 신규 추가** |
+| `past_split` | 54 | 유지 |
+| `intraday` | 50 | 유지 |
+| `no_today` | 49 | 유지 |
+| `risk` | 40 | 유지 |
+| `am_escalation` | 30 | 유지 |
+| `relative` | 30 | 유지 |
+
+**v5 DPO — on-policy 쌍의 의미:**
+
+| 카테고리 | 쌍 수 | 설명 |
+|---------|------|------|
+| `onpolicy` | 228 | SFT v4 모델이 실제로 생성한 오류 출력 — 가장 학습 밀도 높음 |
+| `order_score_mismatch` | 230 | 점수 순서↔배열 순서 불일치 (hard) |
+| `granularity_swap` | 220 | urgency/importance 축 혼동 (hard) |
+| `dependency_scatter` | 185 | 체인 태스크 비연속 배치 (hard) |
+| `date_confusion` | 177 | 날짜 혼동 — 지난 일정 상위 배치 (hard) |
+| `risk_ignore` | 92 | 리스크 키워드 무시 (hard) |
+| `past_hallucination` | 36 | no_today 상황에서 '지났다' 단정 (신규) |
+
+### v3 ↔ v4 ↔ v5 데이터셋 차이 (실측 비교)
+
+| 지표 | v3 | v4 | v5 |
+|------|----|----|-----|
+| 생성 도구 | gpt-5.4 계열 | OpenAI + Claude 병렬 | Claude 중심 |
+| 체인 시나리오 비율 | 19% (379/1,978) | 15% (150/989) | **15% + 체인 58행 신규** |
+| on-policy DPO 쌍 | 0 | 0 | **228~351쌍** |
+| past_hallucination DPO | 0 | 172쌍 (v4 범주) | +36쌍 (v5 no_today 특화) |
+| 시나리오 종류 | 6종 | +4종 = 10종 | 10종 유지, 체인 집중 |
+| `verify_chosen()` 통과율 | 100% | 97-98% | 97-98% |
+
 ### 데이터 구축 방법
 
 1. **한국어 일정 시드 생성**: GPT-4o로 다양한 페르소나·상황의 할 일 목록 생성
@@ -156,9 +222,10 @@
 
 ## 학습 결과 (달성 현황)
 
-### RTX 12GB (Qwen3-4B, QLoRA 4-bit)
+### RTX 12GB — Qwen3-4B-Instruct-2507 (구세대, 참고용)
 
-현재까지 완료된 학습 실험 전체 목록입니다.
+> **주의**: 아래 v1~v5 어댑터는 Qwen3-4B-Instruct-2507 기반. 현재 목표 모델은 Qwen3.5-4B.
+> Qwen3.5 재학습 결과는 하단 "Qwen3.5-4B 재학습" 섹션 참고.
 
 | 단계 | 어댑터 경로 | 데이터셋 | 샘플 수 | train_loss | 비고 |
 |------|-----------|---------|--------|-----------|------|
@@ -169,8 +236,15 @@
 | SFT v3 | `outputs/sft_rtx12g_4b_v3` | scheduler_v3_combined | 5,678 | 0.328 | dpo_v2에서 이어 학습, today 주입 |
 | DPO v3 | `outputs/dpo_rtx12g_4b_v3` | dpo_pairs_v3 | 3,722쌍 | 0.635 | hard negative |
 | GRPO v4 | `outputs/grpo_rtx12g_4b_v4` | grpo_prompts_v4 | 256×4생성 | reward 0.38 | RLVR 파일럿 — 동률 (도즈 부족) |
-| **SFT v4** | **`outputs/sft_rtx12g_4b_v4`** | **sft_v4_train (curated)** | **6,056** | **0.315** | **현재 최선 어댑터 (서빙 적용)** |
-| DPO v5 | `outputs/dpo_rtx12g_4b_v5` | dpo_pairs_v5 (on-policy) | 1,368쌍 | 0.678 | sft_v4와 동률 |
+| SFT v4 | `outputs/sft_rtx12g_4b_v4` | sft_v4_train (curated) | 6,056 | 0.315 | +20.6%p 돌파 (77.3%), prompt loss 마스킹 |
+| DPO v5 | `outputs/dpo_rtx12g_4b_v5` | dpo_pairs_v5 (on-policy) | 1,368쌍 | 0.678 | on-policy — sft_v4와 동률 |
+
+### RTX 12GB — Qwen3.5-4B (현재 목표 모델, QLoRA 4-bit)
+
+| 단계 | 어댑터 경로 | 데이터셋 | 샘플 수 | train_loss | 비고 |
+|------|-----------|---------|--------|-----------|------|
+| **SFT v4** | **`outputs/sft_q35_4b_v4`** *(진행 중)* | sft_v4_train (curated) | 6,056 | 진행 중 | prompt_completion=true, max_seq 1536 |
+| DPO v5 | `outputs/dpo_q35_4b_v5` *(예정)* | dpo_pairs_v5 (on-policy) | 1,368쌍 | — | SFT v4 완료 후 자동 시작 |
 
 ### v4에서 나타난 특징과 변화 (2026-06-12)
 

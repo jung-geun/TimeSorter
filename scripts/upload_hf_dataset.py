@@ -63,10 +63,10 @@ configs:
     path: data/eval_heldout.parquet
 ---
 
-# TimeSorter — 한국어 일정 우선순위 정렬 데이터셋 (v1~v4 통합)
+# TimeSorter — 한국어 일정 우선순위 정렬 데이터셋 (v1~v5 통합)
 
 할 일 목록을 4축(긴급도·중요도·의존성·시간 제약, 각 1-5)으로 채점하고 우선순위를 결정하는
-모델 학습용 데이터. Qwen3-4B SFT → DPO → GRPO 파인튜닝에 사용.
+모델 학습용 데이터. Qwen3.5-4B SFT → DPO → GRPO 파인튜닝에 사용.
 
 ## Configs
 
@@ -78,6 +78,7 @@ configs:
   `today`는 시스템 프롬프트에 주입되는 오늘 날짜(ISO, 빈 문자열=날짜 미상 시나리오).
 - **dpo**: chosen/rejected 쌍. v3+는 형식 동일·내용만 오류인 hard negative
   (date_confusion/granularity_swap/dependency_scatter/risk_ignore/order_score_mismatch/past_hallucination).
+  v5에는 학습된 모델이 실제로 위반한 출력을 rejected로 수집한 **on-policy 351쌍** 포함.
 - **grpo**: 골격(meta JSON) 보유 프롬프트 — meta의 태스크별 마감·과거 여부·체인·리스크 정보로
   검증 가능한 보상 함수(RLVR)를 구성할 수 있다.
 - **eval**: 학습에 쓰지 않은 seed로 생성한 held-out 150 시나리오 (골격 규칙 자동 채점용).
@@ -142,10 +143,10 @@ if __name__ == "__main__":
         print(f"  [삭제] {f}")
 
     _CONFIG_LABEL = {
-        "sft_train": ("sft", "train", "SFT 본 학습 (v2~v4 JSON)"),
+        "sft_train": ("sft", "train", "SFT 본 학습 (v2~v5 JSON, curated 3.4K 포함)"),
         "sft_v1_text": ("sft_v1_text", "train", "v1 자유 텍스트"),
-        "dpo_train": ("dpo", "train", "DPO 쌍 v1~v4"),
-        "grpo_train": ("grpo", "train", "GRPO 프롬프트+골격"),
+        "dpo_train": ("dpo", "train", "DPO 쌍 v1~v5 (on-policy 351쌍 포함)"),
+        "grpo_train": ("grpo", "train", "GRPO 프롬프트+골격 (v3~v5)"),
         "eval_heldout": ("eval", "test", "held-out 자동 평가"),
     }
     card_rows = []
