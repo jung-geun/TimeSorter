@@ -22,6 +22,8 @@ def _load_dotenv() -> None:
 
 def _init_wandb(cfg: RunConfig) -> None:
     import wandb
+    from .config import ensure_wandb_mode
+    ensure_wandb_mode()
     wandb.init(
         project=cfg.wandb_project,
         name=cfg.wandb_run_name,

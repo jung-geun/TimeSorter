@@ -126,6 +126,8 @@ def main(config_path: str) -> None:
 
     if training_kwargs.get("report_to") == "wandb":
         import wandb
+        from .config import ensure_wandb_mode
+        ensure_wandb_mode()
         wandb.init(project=cfg.wandb_project, name=cfg.wandb_run_name)
 
     trainer = GRPOTrainer(

@@ -1,0 +1,37 @@
+# Stage 3 DPO v5 — on-policy(모델 실제 오류) + hard tier 혼합, sft_v4 베이스
+# onpolicy 228쌍: sft_v4가 held-out류 프롬프트에서 실제로 위반한 출력(체인·지난 일정 중심)
+model_name: Qwen/Qwen3-4B-Instruct-2507
+sft_adapter: outputs/sft_rtx12g_4b_v4
+dataset: data/dpo_pairs_v5.parquet
+output_dir: outputs/dpo_rtx12g_4b_v5
+max_samples: null
+max_prompt_len: 800
+schema_version: "v3"
+wandb_run_name: dpo_rtx12g_4b_v5
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  num_train_epochs: 1
+  max_length: 1536
+  precompute_ref_log_probs: true
+  precompute_ref_batch_size: 1
+  beta: 0.1
+  learning_rate: 5.0e-7
+  gradient_checkpointing: true
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 5
+  save_strategy: "steps"
+  save_steps: 16
+  save_total_limit: 2
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

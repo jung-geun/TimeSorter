@@ -361,6 +361,99 @@ uv run python scripts/validate_schedule.py \
 
 ---
 
+## 학습 데이터셋 특징 (SFT / DPO / GRPO)
+
+> 전체 데이터: https://huggingface.co/datasets/pieroot/timesorter-scheduler-ko
+> 감사 상세: [docs/DATASET_AUDIT.md](docs/DATASET_AUDIT.md)
+
+### SFT — `config=sft` (14,314행, tier 컬럼)
+
+**무엇을 가르치나**: (시스템 프롬프트의 오늘 날짜 + 할 일 목록) → 4축 채점 JSON + 우선순위.
+
+| 특징 | 내용 |
+|------|------|
+| 생성 방식 | **골격 우선(skeleton-first)** — 프로그램이 태스크별 마감·과거 여부·체인·리스크를 확정하고 LLM(gpt-5.4 / Claude Sonnet 4.6·Opus 4.8)은 텍스트·정답만 채움. 골격 규칙 자동 검증 통과분만 수록 |
+| 시나리오 | dated_mixed·past_split(지난 일정 분리), intraday(오전>오후), dependency_chain(연속 배치), risk·am_escalation(불이익 조항→점수 상향), no_today(날짜 미상 — '지남' 단정 금지), relative |
+| `today` 컬럼 | 시스템 프롬프트에 주입되는 오늘 날짜 (빈 문자열 = 날짜 미상 시나리오) |
+| `meta` 컬럼 | 골격 JSON — DPO negative 생성·자동 평가·GRPO 보상에 재사용 |
+| **tier** | `curated`(v3-v5, opus 감사 persona_fit 4.9-5.0) **본 학습 권장** / `v2_refusal`(거부 학습, 항상 혼합) / `v2_schedule`(persona_fit 3.3 — 소량만) / `v2_offformat`(비스케줄, 비권장) |
+| 실증 효과 | curated+프롬프트 loss 마스킹 학습 시 held-out 56.7%→**77.3%** (+20.6%p) |
+
+### DPO — `config=dpo` (20,989쌍, tier 컬럼)
+
+**무엇을 가르치나**: 같은 입력에서 올바른 응답(chosen) > 틀린 응답(rejected) 선호.
+
+| 특징 | 내용 |
+|------|------|
+| hard negative 설계 | chosen과 **형식·길이 동일(길이비 0.96-0.99), 내용만 오류** — date_confusion(지난 일정 1위), granularity_swap(오전/오후 뒤바꿈), dependency_scatter(체인 분산), risk_ignore, order_score_mismatch(점수-순서 모순), past_hallucination(날짜 미상인데 '지남' 단정) |
+| on-policy 쌍 | 학습된 모델이 실제로 위반한 출력을 rejected로 수집 (`gen_onpolicy_pairs.py`) — v5에서 도입 |
+| **tier** | `hard`(4,200쌍) **본 학습 권장** / `refusal`(720) / `easy_format`(v2 14,601 — **길이 편향 주의**: urgency_only 길이비 0.19, invalid_json 0.36) / `legacy_text`(v1 자유 텍스트 — v3+ 학습 금지) |
+| 교훈 | v2 easy negative만으로 margins 17.7 "완벽 수렴" 후 실전 FAIL — 형식 차이만 배우는 보상 해킹. hard tier는 margins 0.16에 머무는 것이 정상 |
+
+### GRPO — `config=grpo` (3,356행)
+
+**무엇을 가르치나**: 쌍 없이, 모델이 생성한 k개 샘플을 **골격 규칙(verify_chosen)** 으로 채점해 그룹 상대 우위를 보상으로 사용 (RLVR — 보상이 결정적·무비용).
+
+| 특징 | 내용 |
+|------|------|
+| 구성 | prompt + persona + today + **meta(골격)** — chosen 불필요 |
+| 보상 | 전 규칙 통과 +1.0 / 위반당 -0.3 / 파싱 실패 -1.0 (`timesorter/train_grpo.py`) |
+| 무결성 | meta 파싱 100%, eval 누수 0, 프롬프트 중복 0 (감사 통과) |
+| 주의 | 보상에 reason 품질이 없음 — 학습 후 reason 다양성 수동 점검 필요. 12GB에서 rollout이 ~9분/스텝이라 본 학습은 vLLM rollout/DGX 권장 |
+
+### eval — `config=eval` (150행, split=test)
+
+학습에 쓰지 않은 seed로 생성한 held-out. `eval_scheduler.py`가 골격 규칙로 $0 자동 채점 — 모든 어댑터 비교의 기준.
+
+---
+
+## 학습 · 실행 · 검증 가이드
+
+### 학습 (각 단계 단일 파일 실행)
+
+```bash
+# SFT  (기본: configs/sft_rtx12g_4b_v4.yaml — curated tier + 프롬프트 loss 마스킹)
+uv run python scripts/train_sft.py
+uv run python scripts/train_sft.py --config configs/sft_rtx12g_4b_v3.yaml
+
+# DPO  (기본: configs/dpo_rtx12g_4b_v5.yaml — on-policy + hard tier)
+uv run python scripts/train_dpo.py
+
+# GRPO (기본: configs/grpo_rtx12g_4b_v4.yaml — verify_chosen 보상 RLVR)
+uv run python scripts/train_grpo.py
+```
+
+- 12GB GPU에서는 학습 전 서빙 중지 필수: `docker stop timesorter-serve`
+- DPO/GRPO 메모리 설정(12GB): `max_length 1536`, `precompute_ref_log_probs`,
+  GRPO는 `generation_batch_size: 4` — 각 config에 주석으로 근거 기재
+
+### 학습 로깅 (wandb)
+
+`WANDB_API_KEY`가 있으면 원격(wandb.ai)으로, **없으면 자동으로 오프라인 모드**로 전환되어
+로컬 `wandb/offline-run-*/`에만 기록된다 (학습 코드가 자동 감지 — 별도 설정 불필요).
+나중에 원격으로 올리려면: `wandb sync wandb/offline-run-<...>`
+
+### 검증 (학습된 어댑터 → 한 줄)
+
+```bash
+# docker(vLLM) 서빙 + held-out 30건 빠른 채점 + 샘플 추론 (끝나면 서버 자동 중지)
+bash scripts/validate_model.sh outputs/sft_rtx12g_4b_v4
+
+# 전체 150건 + guard rerank까지
+FULL=1 bash scripts/validate_model.sh outputs/dpo_rtx12g_4b_v5
+
+# GPU 서버 없이 로컬 단건 추론만
+MODE=local bash scripts/validate_model.sh outputs/sft_rtx12g_4b_v4
+
+# 검증 후 서버 유지 (이메일 파이프라인 등 후속 사용)
+KEEP=1 bash scripts/validate_model.sh outputs/sft_rtx12g_4b_v4
+```
+
+검증 출력: 골격 규칙 통과율(전체·시나리오별·위반 유형) + 지난 일정/에스컬레이션이 섞인
+샘플 입력의 실제 우선순위 출력. 판사(gpt-5.5) 검증은 `scripts/validate_schedule.py` 참고.
+
+---
+
 ## 빠른 시작
 
 ### 1. 환경 설정
@@ -375,7 +468,7 @@ make docker-build   # RTX GPU (Docker)
 ```
 OPENAI_API_KEY=sk-...   # 데이터 생성 필수
 HF_TOKEN=hf_...         # 모델 다운로드
-WANDB_API_KEY=...       # 학습 모니터링
+WANDB_API_KEY=...       # 학습 모니터링 (없으면 로컬 wandb/ 오프라인 기록으로 자동 전환)
 HF_HOME=models          # 로컬 모델 캐시 (프로젝트 내 저장)
 ```
 

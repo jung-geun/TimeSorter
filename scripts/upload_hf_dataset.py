@@ -82,6 +82,28 @@ configs:
   검증 가능한 보상 함수(RLVR)를 구성할 수 있다.
 - **eval**: 학습에 쓰지 않은 seed로 생성한 held-out 150 시나리오 (골격 규칙 자동 채점용).
 
+## 데이터셋별 특징
+
+### sft
+- 골격 우선 생성 + 자동 검증 통과분만 수록. `today`(오늘 날짜, ""=미상)·`meta`(골격)·`version` 포함.
+- **tier**: `curated`(v3-v5 — Claude Opus 4.8 감사 persona_fit 4.9-5.0, 본 학습 권장) /
+  `v2_refusal`(거부 학습, 항상 혼합) / `v2_schedule`(persona_fit 3.3 — 소량만) / `v2_offformat`(비권장)
+- 실증: curated + 프롬프트 loss 마스킹 학습 → held-out 골격 통과율 56.7%→77.3% (+20.6%p)
+
+### dpo
+- hard negative는 chosen과 형식·길이 동일(길이비 0.96-0.99), **내용만 오류**:
+  date_confusion / granularity_swap / dependency_scatter / risk_ignore / order_score_mismatch / past_hallucination
+- on-policy 쌍: 학습된 모델이 실제로 위반한 출력을 rejected로 수집
+- **tier**: `hard`(권장) / `refusal` / `easy_format`(v2 — urgency_only 길이비 0.19 등 길이 편향 주의) / `legacy_text`(v1 — v3+ 학습 금지)
+
+### grpo
+- chosen 없이 prompt+meta(골격)만 — verify_chosen 규칙으로 결정적·무비용 보상(RLVR) 구성
+- 보상 예시: 전 규칙 통과 +1.0, 위반당 -0.3, 파싱 실패 -1.0
+- 무결성: meta 파싱 100%, eval 누수 0, 프롬프트 중복 0
+
+### eval
+- 학습 미사용 seed(47)로 생성한 held-out 150 — 골격 규칙 자동 채점용 기준선
+
 ## 생성 방법 — 시나리오 골격 우선 (skeleton-first)
 
 1. 프로그램이 골격 확정: 태스크별 마감 일시·이미 지났는지·의존 체인·리스크 문구
@@ -103,6 +125,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", default="pieroot/timesorter-scheduler-ko")
     parser.add_argument("--private", action="store_true")
+    parser.add_argument("--card-only", action="store_true", help="README(데이터 카드)만 갱신")
     args = parser.parse_args()
 
     token = os.environ.get("HF_TOKEN")
@@ -133,9 +156,10 @@ if __name__ == "__main__":
         n = len(pd.read_parquet(p))
         cfg, split, desc = _CONFIG_LABEL[p.stem]
         card_rows.append(f"| `{cfg}` | {split} | {n:,} | {desc} |")
-        api.upload_file(path_or_fileobj=str(p), path_in_repo=remote,
-                        repo_id=args.repo, repo_type="dataset")
-        print(f"  [업로드] {remote} ({n:,}행)")
+        if not args.card_only:
+            api.upload_file(path_or_fileobj=str(p), path_in_repo=remote,
+                            repo_id=args.repo, repo_type="dataset")
+            print(f"  [업로드] {remote} ({n:,}행)")
 
     readme = _CARD.replace("{rows}", "\n".join(card_rows))
     api.upload_file(path_or_fileobj=readme.encode(), path_in_repo="README.md",

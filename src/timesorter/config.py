@@ -56,3 +56,18 @@ class RunConfig:
             lora=lora,
             training_args=data.get("training_args", {}),
         )
+
+
+def ensure_wandb_mode() -> None:
+    """WANDB_API_KEY가 없으면 오프라인 모드로 전환 — 로컬 wandb/ 디렉토리에만 기록.
+
+    원격 연결 없이도 학습 메트릭이 유실되지 않는다. 이후 `wandb sync wandb/offline-run-*`
+    으로 원격 업로드 가능. (README '학습 로깅' 참고)
+    """
+    import os
+    from pathlib import Path
+    has_key = bool(os.environ.get("WANDB_API_KEY"))
+    has_netrc = any((Path.home() / f).exists() for f in (".netrc", "_netrc"))
+    if not (has_key or has_netrc):
+        os.environ.setdefault("WANDB_MODE", "offline")
+        print("[wandb] API 키 없음 — 오프라인 모드 (로컬 wandb/ 기록)")
