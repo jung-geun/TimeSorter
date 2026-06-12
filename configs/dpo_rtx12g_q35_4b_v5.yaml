@@ -12,8 +12,8 @@ schema_version: "v3"
 wandb_run_name: dpo_q35_4b_v5
 
 lora:
-  r: 16
-  alpha: 32
+  r: 8
+  alpha: 16
   dropout: 0.05
   use_4bit: true
 

@@ -62,7 +62,18 @@ class MemEfficientDPOTrainer(DPOTrainer):
         return entropy
 
     def _compute_loss(self, model, inputs, return_outputs):  # noqa: ARG002
+        """Detach-and-re-run: frees chosen GC graph before rejected forward to avoid OOM.
+
+        Memory timeline (gradient_checkpointing=True, r=8):
+          Step 1: chosen forward → chosen_logps_val (scalar leaf), chosen GC graph freed
+          Step 2: rejected forward → rejected_logps (with graph, ~0 GC since already freed)
+          Step 3: compute DPO gradient factors analytically (no_grad)
+          Step 4: proxy backward for rejected (contributes to grad accumulation)
+          Step 5: re-run chosen forward → proxy backward for chosen
+          Step 6: return dummy loss (zero-grad leaf, Trainer's .backward() is no-op)
+        """
         mode = "train" if self.model.training else "eval"
+        is_train = model.training
 
         _non_model_keys = {"completion_mask", "ref_chosen_logps", "ref_rejected_logps"}
         base_kwargs = {k: v for k, v in inputs.items() if k not in _non_model_keys}
@@ -72,63 +83,126 @@ class MemEfficientDPOTrainer(DPOTrainer):
         input_ids = inputs["input_ids"]                # [2, T]
         half = input_ids.shape[0] // 2                 # == 1 for batch_size=1
 
+        assert self.precompute_ref_logps, (
+            "MemEfficientDPOTrainer requires precompute_ref_log_probs=True"
+        )
+        ref_chosen_logps = inputs["ref_chosen_logps"].float()
+        ref_rejected_logps = inputs["ref_rejected_logps"].float()
+
         def _forward_half(start: int, end: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-            """[start:end] half forward → (logps [h,T-1], entropy [h,T-1], shift_cmask [h,T-1])."""
             half_kwargs = {k: v[start:end] if isinstance(v, torch.Tensor) else v
                            for k, v in base_kwargs.items()}
             out = model(**half_kwargs)
             logits = out.logits[:, :-1, :]              # view [h, T-1, V] — NO .contiguous()
-            shift_labels = input_ids[start:end, 1:]     # [h, T-1]
-            shift_cmask = completion_mask[start:end, 1:]  # [h, T-1]
-
-            per_tok_logps = self._chunked_logps(logits, shift_labels)   # [h, T-1], float32
-            ent = self._chunked_entropy(logits)                         # [h, T-1], float32
+            shift_labels = input_ids[start:end, 1:]
+            shift_cmask = completion_mask[start:end, 1:]
+            per_tok_logps = self._chunked_logps(logits, shift_labels)
+            ent = self._chunked_entropy(logits)
             del logits, out
             torch.cuda.empty_cache()
             per_tok_logps[shift_cmask == 0] = 0.0
-            logps = per_tok_logps.sum(dim=1)            # [h]
+            logps = per_tok_logps.sum(dim=1)            # [h], retains grad graph
             return logps, ent, shift_cmask
 
-        # --- chosen forward ---
-        chosen_logps, chosen_entropy, chosen_cmask = _forward_half(0, half)
-        # --- rejected forward ---
-        rejected_logps, rejected_entropy, rejected_cmask = _forward_half(half, 2 * half)
-
-        assert self.precompute_ref_logps, (
-            "MemEfficientDPOTrainer requires precompute_ref_log_probs=True"
-        )
-        ref_chosen_logps = inputs["ref_chosen_logps"].to(chosen_logps)
-        ref_rejected_logps = inputs["ref_rejected_logps"].to(rejected_logps)
-
-        # --- DPO loss (sigmoid; ipo/hinge also handled) ---
-        chosen_logratios = chosen_logps - ref_chosen_logps
-        rejected_logratios = rejected_logps - ref_rejected_logps
-        delta = chosen_logratios - rejected_logratios
-
         loss_type = self.loss_types[0] if hasattr(self, "loss_types") and self.loss_types else "sigmoid"
-        if loss_type == "sigmoid":
-            per_seq_loss = -F.logsigmoid(self.beta * delta)
-        elif loss_type == "ipo":
-            chosen_avg = chosen_logratios / chosen_cmask.sum(dim=1).clamp(min=1).float()
-            rejected_avg = rejected_logratios / rejected_cmask.sum(dim=1).clamp(min=1).float()
-            per_seq_loss = (chosen_avg - rejected_avg - 1.0 / (2.0 * self.beta)) ** 2
-        elif loss_type == "hinge":
-            per_seq_loss = torch.relu(1 - self.beta * delta)
-        else:
-            raise NotImplementedError(
-                f"MemEfficientDPOTrainer: loss_type='{loss_type}' not supported. "
-                "Use sigmoid/ipo/hinge or set use_liger_kernel=false + precompute_ref_log_probs=true."
-            )
 
-        loss = per_seq_loss.mean()
+        if not is_train:
+            # Eval: simple sequential forward, no manual backward needed
+            chosen_logps, chosen_entropy, chosen_cmask = _forward_half(0, half)
+            rejected_logps, rejected_entropy, rejected_cmask = _forward_half(half, 2 * half)
+
+            chosen_logratios = chosen_logps.detach() - ref_chosen_logps
+            rejected_logratios = rejected_logps.detach() - ref_rejected_logps
+            delta = chosen_logratios - rejected_logratios
+            logps_chosen_metric = chosen_logps.detach()
+            logps_rejected_metric = rejected_logps.detach()
+            if loss_type == "sigmoid":
+                loss = -F.logsigmoid(self.beta * delta).mean()
+            elif loss_type == "ipo":
+                c_avg = chosen_logratios / chosen_cmask.sum(1).clamp(1).float()
+                r_avg = rejected_logratios / rejected_cmask.sum(1).clamp(1).float()
+                loss = ((c_avg - r_avg - 1.0 / (2.0 * self.beta)) ** 2).mean()
+            elif loss_type == "hinge":
+                loss = torch.relu(1 - self.beta * delta).mean()
+            else:
+                raise NotImplementedError(f"loss_type '{loss_type}' not supported")
+        else:
+            # Train: detach-and-re-run to free chosen GC graph before rejected forward.
+            # Step 1: chosen forward — get value, immediately detach + free GC graph
+            chosen_logps_tmp, chosen_entropy, chosen_cmask = _forward_half(0, half)
+            chosen_val = chosen_logps_tmp.detach().clone()  # scalar values, no graph
+            del chosen_logps_tmp
+            torch.cuda.empty_cache()  # frees ~263 MB chosen GC activation graph
+
+            # Step 2: rejected forward — now has enough headroom
+            rejected_logps, rejected_entropy, rejected_cmask = _forward_half(half, 2 * half)
+            rejected_val = rejected_logps.detach().clone()
+
+            # Step 3: compute DPO gradient factors analytically (no allocations)
+            with torch.no_grad():
+                chosen_logratios = chosen_val - ref_chosen_logps
+                rejected_logratios = rejected_val - ref_rejected_logps
+                delta = chosen_logratios - rejected_logratios
+
+                if loss_type == "sigmoid":
+                    # d/d(logps_chosen) of mean(-log σ(β·Δ)) = β/B · σ(-β·Δ)
+                    # d/d(logps_rejected) = -β/B · σ(-β·Δ)
+                    sigma_neg = torch.sigmoid(-self.beta * delta)           # [B]
+                    B = delta.shape[0]
+                    scale = 1.0 / max(self.args.gradient_accumulation_steps, 1)
+                    g_chosen = scale * (self.beta / B) * sigma_neg          # chosen grad factor
+                    g_rejected = scale * (-self.beta / B) * sigma_neg       # rejected grad factor
+                    loss_val = -F.logsigmoid(self.beta * delta).mean()
+                elif loss_type == "ipo":
+                    c_avg = chosen_logratios / chosen_cmask.sum(1).clamp(1).float()
+                    r_avg = rejected_logratios / rejected_cmask.sum(1).clamp(1).float()
+                    residual = c_avg - r_avg - 1.0 / (2.0 * self.beta)
+                    B = delta.shape[0]
+                    scale = 1.0 / max(self.args.gradient_accumulation_steps, 1)
+                    n_c = chosen_cmask.sum(1).clamp(1).float()
+                    n_r = rejected_cmask.sum(1).clamp(1).float()
+                    g_chosen = scale * (2.0 * residual / n_c / B)
+                    g_rejected = scale * (-2.0 * residual / n_r / B)
+                    loss_val = (residual ** 2).mean()
+                elif loss_type == "hinge":
+                    active = (self.beta * delta < 1).float()
+                    B = delta.shape[0]
+                    scale = 1.0 / max(self.args.gradient_accumulation_steps, 1)
+                    g_chosen = scale * (-self.beta / B) * active
+                    g_rejected = scale * (self.beta / B) * active
+                    loss_val = torch.relu(1 - self.beta * delta).mean()
+                else:
+                    raise NotImplementedError(f"loss_type '{loss_type}' not supported")
+
+            # Step 4: backward for rejected via proxy loss (manual gradient injection)
+            proxy_rejected = (rejected_logps * g_rejected.detach()).sum()
+            proxy_rejected.backward()
+            del rejected_logps, proxy_rejected
+            torch.cuda.empty_cache()
+
+            # Step 5: re-run chosen forward + backward
+            chosen_logps_fresh, _, _ = _forward_half(0, half)
+            proxy_chosen = (chosen_logps_fresh * g_chosen.detach()).sum()
+            proxy_chosen.backward()
+            del chosen_logps_fresh, proxy_chosen
+            torch.cuda.empty_cache()
+
+            # Step 6: dummy loss — real value for logging, zero-grad leaf so Trainer's
+            # .backward() call adds nothing to the already-accumulated gradients.
+            dummy = sum(
+                p.sum() * 0 for p in model.parameters()
+                if p.requires_grad and p.grad is not None
+            )
+            loss = loss_val.detach() + dummy
+            logps_chosen_metric = chosen_val
+            logps_rejected_metric = rejected_val
 
         # --- metrics (logging only) ---
         chosen_rewards = self.beta * chosen_logratios.detach()
         rejected_rewards = self.beta * rejected_logratios.detach()
 
-        # entropy
-        cat_entropy = torch.cat([chosen_entropy, rejected_entropy], dim=0)   # [2, T-1]
-        cat_cmask = torch.cat([chosen_cmask, rejected_cmask], dim=0)          # [2, T-1]
+        cat_entropy = torch.cat([chosen_entropy, rejected_entropy], dim=0)
+        cat_cmask = torch.cat([chosen_cmask, rejected_cmask], dim=0)
         entropy_sum = self.accelerator.gather_for_metrics(
             (cat_entropy * cat_cmask).sum()
         ).sum()
@@ -136,7 +210,6 @@ class MemEfficientDPOTrainer(DPOTrainer):
         entropy_val = (entropy_sum / total_tokens).item() if total_tokens > 0 else 0.0
         self._metrics[mode]["entropy"].append(entropy_val)
 
-        # token count
         if mode == "train":
             n_tok = self.accelerator.gather_for_metrics(
                 inputs["attention_mask"].sum()
@@ -144,7 +217,6 @@ class MemEfficientDPOTrainer(DPOTrainer):
             self._total_train_tokens += n_tok
         self._metrics[mode]["num_tokens"] = [self._total_train_tokens]
 
-        # logits/logps/rewards
         self._metrics[mode]["logits/chosen"].append(
             self.accelerator.gather_for_metrics(chosen_logratios.detach()).mean().item()
         )
@@ -152,10 +224,10 @@ class MemEfficientDPOTrainer(DPOTrainer):
             self.accelerator.gather_for_metrics(rejected_logratios.detach()).mean().item()
         )
         self._metrics[mode]["logps/chosen"].append(
-            self.accelerator.gather_for_metrics(chosen_logps.detach()).mean().item()
+            self.accelerator.gather_for_metrics(logps_chosen_metric).mean().item()
         )
         self._metrics[mode]["logps/rejected"].append(
-            self.accelerator.gather_for_metrics(rejected_logps.detach()).mean().item()
+            self.accelerator.gather_for_metrics(logps_rejected_metric).mean().item()
         )
         self._metrics[mode]["rewards/chosen"].append(
             self.accelerator.gather_for_metrics(chosen_rewards).mean().item()
