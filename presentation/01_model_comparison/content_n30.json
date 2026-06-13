@@ -1,0 +1,534 @@
+{
+  "limit": 30,
+  "models": {
+    "base": {
+      "label": "Qwen3.5-4B-Base (RLHF 미적용)",
+      "total": 30,
+      "schema_pass": 5,
+      "content_pass": 12,
+      "per_scenario": {
+        "dated_mixed": {
+          "n": 9,
+          "schema": 1,
+          "content": 1
+        },
+        "intraday": {
+          "n": 6,
+          "schema": 0,
+          "content": 3
+        },
+        "risk": {
+          "n": 5,
+          "schema": 2,
+          "content": 4
+        },
+        "relative": {
+          "n": 4,
+          "schema": 2,
+          "content": 4
+        },
+        "dependency_chain": {
+          "n": 6,
+          "schema": 0,
+          "content": 0
+        }
+      },
+      "rows": [
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": true,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "오늘 17:00 마감(태스크 4)이 19:00 마감(태스크 1)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 4가 유효 태스크보다 상위에 배치됨",
+            "지난 일정 태스크 4의 urgency/time_constraint가 2 초과"
+          ]
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3가 유효 태스크보다 상위에 배치됨",
+            "지난 일정 태스크 3의 urgency/time_constraint가 2 초과"
+          ]
+        },
+        {
+          "scenario": "relative",
+          "schema_pass": true,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크의 순서가 단계 순서와 다름",
+            "체인 태스크가 연속으로 배치되지 않음",
+            "체인 선행 태스크 1의 dependency가 4 미만"
+          ]
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": true,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 선행 태스크 2의 dependency가 4 미만",
+            "체인 선행 태스크 4의 dependency가 4 미만",
+            "마감 없는 태스크가 1위에 배치됨"
+          ]
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크의 순서가 단계 순서와 다름"
+          ]
+        },
+        {
+          "scenario": "relative",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "오늘 13:00 마감(태스크 5)이 14:00 마감(태스크 2)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3가 유효 태스크보다 상위에 배치됨",
+            "오늘 09:00 마감(태스크 5)이 18:00 마감(태스크 1)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3가 유효 태스크보다 상위에 배치됨",
+            "지난 일정 태스크 4가 유효 태스크보다 상위에 배치됨",
+            "오늘 11:00 마감(태스크 2)이 18:00 마감(태스크 1)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크의 순서가 단계 순서와 다름",
+            "체인 선행 태스크 4의 dependency가 4 미만"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3가 유효 태스크보다 상위에 배치됨"
+          ]
+        },
+        {
+          "scenario": "relative",
+          "schema_pass": true,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "마감 없는 태스크가 1위에 배치됨"
+          ]
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크의 순서가 단계 순서와 다름",
+            "체인 태스크가 연속으로 배치되지 않음"
+          ]
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": true,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "relative",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "오늘 10:00 마감(태스크 4)이 11:00 마감(태스크 2)보다 후순위",
+            "오늘 11:00 마감(태스크 2)이 13:00 마감(태스크 1)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 1가 유효 태스크보다 상위에 배치됨",
+            "지난 일정 태스크 1의 urgency/time_constraint가 2 초과",
+            "오늘 11:30 마감(태스크 3)이 14:00 마감(태스크 2)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 4가 유효 태스크보다 상위에 배치됨",
+            "지난 일정 태스크 4의 urgency/time_constraint가 2 초과"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3의 urgency/time_constraint가 2 초과"
+          ]
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크가 연속으로 배치되지 않음",
+            "체인 선행 태스크 1의 dependency가 4 미만",
+            "체인 선행 태스크 4의 dependency가 4 미만"
+          ]
+        }
+      ]
+    },
+    "instruct": {
+      "label": "Qwen3.5-4B (instruct, 어댑터 없음)",
+      "total": 30,
+      "schema_pass": 0,
+      "content_pass": 13,
+      "per_scenario": {
+        "dated_mixed": {
+          "n": 9,
+          "schema": 0,
+          "content": 2
+        },
+        "intraday": {
+          "n": 6,
+          "schema": 0,
+          "content": 2
+        },
+        "risk": {
+          "n": 5,
+          "schema": 0,
+          "content": 5
+        },
+        "relative": {
+          "n": 4,
+          "schema": 0,
+          "content": 4
+        },
+        "dependency_chain": {
+          "n": 6,
+          "schema": 0,
+          "content": 0
+        }
+      },
+      "rows": [
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 5가 유효 태스크보다 상위에 배치됨"
+          ]
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "오늘 17:00 마감(태스크 4)이 19:00 마감(태스크 1)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 4가 유효 태스크보다 상위에 배치됨"
+          ]
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3가 유효 태스크보다 상위에 배치됨"
+          ]
+        },
+        {
+          "scenario": "relative",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 선행 태스크 1의 dependency가 4 미만"
+          ]
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크의 순서가 단계 순서와 다름",
+            "체인 선행 태스크 2의 dependency가 4 미만",
+            "체인 선행 태스크 4의 dependency가 4 미만"
+          ]
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크의 순서가 단계 순서와 다름",
+            "체인 선행 태스크 1의 dependency가 4 미만",
+            "체인 선행 태스크 4의 dependency가 4 미만"
+          ]
+        },
+        {
+          "scenario": "relative",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "오늘 13:00 마감(태스크 5)이 14:00 마감(태스크 2)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3가 유효 태스크보다 상위에 배치됨"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3가 유효 태스크보다 상위에 배치됨",
+            "지난 일정 태스크 4의 urgency/time_constraint가 2 초과",
+            "오늘 11:00 마감(태스크 2)이 18:00 마감(태스크 1)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크의 순서가 단계 순서와 다름",
+            "체인 선행 태스크 4의 dependency가 4 미만",
+            "체인 선행 태스크 1의 dependency가 4 미만"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 3가 유효 태스크보다 상위에 배치됨"
+          ]
+        },
+        {
+          "scenario": "relative",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "오늘 16:00 마감(태스크 2)이 17:00 마감(태스크 3)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크의 순서가 단계 순서와 다름",
+            "체인 선행 태스크 4의 dependency가 4 미만"
+          ]
+        },
+        {
+          "scenario": "risk",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "relative",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "intraday",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "오늘 10:00 마감(태스크 4)이 11:00 마감(태스크 2)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "지난 일정 태스크 1가 유효 태스크보다 상위에 배치됨",
+            "오늘 11:30 마감(태스크 3)이 14:00 마감(태스크 2)보다 후순위"
+          ]
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dated_mixed",
+          "schema_pass": false,
+          "content_pass": true,
+          "content_viol": []
+        },
+        {
+          "scenario": "dependency_chain",
+          "schema_pass": false,
+          "content_pass": false,
+          "content_viol": [
+            "체인 태스크가 연속으로 배치되지 않음",
+            "체인 선행 태스크 1의 dependency가 4 미만",
+            "체인 선행 태스크 4의 dependency가 4 미만"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -447,26 +447,45 @@ footer(s, 13)
 # Slide 14 — 핵심 발견 ①
 # ═══════════════════════════════════════════════════════════════════════════
 s = content_slide("KEY FINDING ①", "파인튜닝의 1차 효과는 '스키마 준수'")
-add_box(s, Inches(0.5), Inches(1.55), Inches(12.35), Inches(1.5), fill=RGBColor(0xFD,0xF3,0xE7), line=ORANGE, line_w=Pt(2))
-add_text(s, Inches(0.7), Inches(1.68), Inches(12), Inches(1.3),
-         [("\"instruct 모델 0%\"는 추론 실패가 아니다 — 출력 스키마 미준수다", dict(size=16, bold=True, color=ORANGE, space_after=4)),
-          ("instruct는 tasks를 [{\"id\",\"text\"}]가 아닌 [\"문자열\"] 형태로 출력해 파싱 전부 실패. "
-           "실제 추론은 합리적이었다 (체인 순서 [5,1,3,4,2]로 정확).", dict(size=12.5, color=DARK))])
-add_table(s, Inches(0.5), Inches(3.4), Inches(12.35), Inches(2.0),
-          [["모델", "통과율(n=30)", "원인"],
-           ["Qwen3.5-4B instruct (no FT)", "0.0%", "tasks를 문자열 배열로 출력 → 파싱 실패"],
-           ["Qwen3.5-4B-Base (no FT)", "16.7%", "시스템 프롬프트 스키마 예시를 더 충실히 모방"],
-           ["+ SFT v4", "90.0%", "정확한 JSON 스키마 + 채점 규칙 학습"]],
-          col_widths=[Inches(4.5), Inches(2.85), Inches(5.0)], font_size=13, header_fill=ORANGE)
-add_text(s, Inches(0.5), Inches(5.7), Inches(12.3), Inches(1.0),
-         [("역설: base가 instruct보다 통과율이 높다 (2/6 vs 0/6) — RLHF instruct가 오히려 스키마를 '재해석'",
-           dict(size=12.5, bold=True, italic=True, color=NAVY, align=PP_ALIGN.CENTER)),
-          ("→ 파인튜닝은 '없는 추론 주입'이 아니라 '앱이 파싱할 정확한 출력 규격 고정'이 핵심",
-           dict(size=12.5, color=DARK, align=PP_ALIGN.CENTER, space_before=4))])
+add_image_fit(s, ASSETS / "chart_schema_vs_content.png", Inches(0.4), Inches(1.4),
+              Inches(8.0), Inches(5.5))
+add_box(s, Inches(8.6), Inches(1.5), Inches(4.3), Inches(5.0), fill=LIGHT, line=ORANGE, line_w=Pt(1.5))
+add_text(s, Inches(8.78), Inches(1.65), Inches(3.95), Inches(4.8),
+         [("\"0%\"의 진실", dict(size=15, bold=True, color=ORANGE, space_after=6)),
+          ("no-FT 모델은 tasks를 [\"문자열\"]로 출력해 파싱 실패 → 스키마 0%", dict(size=11.5, color=DARK, bullet=True, space_after=5)),
+          ("하지만 priority_order·scores는 정상 → id 재구성 후 내용만 채점하면:", dict(size=11.5, color=DARK, bullet=True, space_after=5)),
+          ("instruct 0% → 내용 43.3%", dict(size=12.5, bold=True, color=BLUE, level=1, space_after=2)),
+          ("base 16.7% → 내용 40.0%", dict(size=12.5, bold=True, color=BLUE, level=1, space_after=6)),
+          ("추론 능력의 40%+ 는 이미 있었다 — 파인튜닝이 그것을 앱 규격으로 고정", dict(size=11.5, color=GRAY, bullet=True, space_after=5)),
+          ("FT 모델은 스키마=내용 (갭 없음)", dict(size=11.5, color=GRAY, bullet=True))])
 footer(s, 14)
 
+# ─────────────────────────────────────────────────────────────────────────
+# Slide 15 — 핵심 발견 ① 보강: 시나리오별 포맷 vs 내용
+# ─────────────────────────────────────────────────────────────────────────
+s = content_slide("KEY FINDING ①-b", "no-FT 모델의 숨은 추론 능력 — 시나리오별")
+add_text(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.55),
+         [("Qwen3.5-4B instruct (어댑터 없음) — 스키마 기준 전부 0%지만, 내용만 보면:",
+           dict(size=14, bold=True, color=NAVY))])
+add_table(s, Inches(0.5), Inches(2.05), Inches(12.35), Inches(2.7),
+          [["시나리오", "스키마 통과", "내용 통과", "해석"],
+           ["리스크", "0/5", "5/5 (100%)", "추론 완벽 — 포맷만 못 맞춤"],
+           ["상대 날짜", "0/4", "4/4 (100%)", "추론 완벽 — 포맷만 못 맞춤"],
+           ["당일 시각", "0/6", "2/6 (33%)", "시각 순서 추론 약함"],
+           ["날짜 혼재", "0/9", "2/9 (22%)", "지난 일정 처리 약함 (진짜 약점)"],
+           ["의존성 체인", "0/6", "0/6 (0%)", "체인 능력 부재 (전 모델 공통)"]],
+          col_widths=[Inches(2.6), Inches(2.5), Inches(2.6), Inches(4.65)], font_size=12.5)
+add_box(s, Inches(0.5), Inches(5.05), Inches(12.35), Inches(1.7), fill=LIGHT, line=BLUE)
+add_text(s, Inches(0.7), Inches(5.18), Inches(12), Inches(1.5),
+         [("파인튜닝이 한 일 = 두 종류", dict(size=13, bold=True, color=BLUE, space_after=4)),
+          ("① 포맷 고정 (즉효) — 리스크·상대날짜는 내용 이미 100%, SFT는 규격만 고정해 0→100%",
+           dict(size=12, color=DARK, bullet=True, space_after=3)),
+          ("② 진짜 추론 보강 — 날짜혼재(22→89%)·당일시각(33→100%)은 SFT가 실제 추론을 가르침",
+           dict(size=12, color=DARK, bullet=True))])
+footer(s, 15)
+
 # ═══════════════════════════════════════════════════════════════════════════
-# Slide 15 — 핵심 발견 ② + 위반 추이
+# Slide 16 — 핵심 발견 ② + 위반 추이
 # ═══════════════════════════════════════════════════════════════════════════
 s = content_slide("KEY FINDING ②", "DPO는 '능력 부재'를 해결하지 못한다")
 add_box(s, Inches(0.5), Inches(1.55), Inches(12.35), Inches(1.35), fill=RGBColor(0xFD,0xF3,0xE7), line=ORANGE, line_w=Pt(2))
@@ -488,10 +507,10 @@ add_text(s, Inches(0.5), Inches(5.1), Inches(12.3), Inches(1.8),
            dict(size=12.5, color=DARK, bullet=True, space_after=4)),
           ("해결책: 4–5단계 긴 체인 특화 SFT 데이터 3× 증량 (선호학습이 아닌 능력 보강)",
            dict(size=12.5, bold=True, color=GREEN, bullet=True))])
-footer(s, 15)
+footer(s, 16)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Slide 16 — 결론
+# Slide 17 — 결론
 # ═══════════════════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(BLANK)
 add_box(s, 0, 0, SW, SH, fill=NAVY)

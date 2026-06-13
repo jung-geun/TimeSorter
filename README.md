@@ -389,6 +389,20 @@ Q2 보고서 우선을 기대하면 consistency 감점 요인이 되기도 — �
 
 파인튜닝 없이는 출력 규격 미준수로 0%, SFT로 90% 도달. (자세한 원인은 핵심 발견 ① 참조)
 
+#### 포맷(스키마) vs 추론(내용) 분리 채점 — no-FT 모델의 "0%"는 포맷 문제
+
+no-FT 모델은 `tasks`를 `["문자열"]`로 출력해 스키마 채점이 전부 실패한다. 하지만 `priority_order`·`scores`는 정상 출력하므로, tasks id를 위치 기반으로 재구성해 **추론 내용만** 따로 채점할 수 있다 (`scripts/content_eval.py`).
+
+![포맷 vs 내용](assets/chart_schema_vs_content.png)
+
+| 모델 | 스키마 통과 | 내용 통과 | 숨은 추론 능력 |
+|------|-----------|----------|--------------|
+| Qwen3.5-4B (no FT) | 0.0% | **43.3%** | +43.3%p |
+| Qwen3.5-4B-Base (no FT) | 16.7% | **40.0%** | +23.3%p |
+| + SFT v4 / + DPO v5 | 90.0% | 90.0% | 0 (포맷=내용) |
+
+> **instruct의 "0%"는 거의 전부 포맷 문제** — 내용 기준 시나리오별로 리스크 5/5(100%)·상대날짜 4/4(100%)는 이미 완벽하고, 포맷만 못 맞췄다. 파인튜닝은 ① 이미 있는 추론을 앱 규격으로 고정하고, ② 날짜혼재(22→89%)·당일시각(33→100%) 같은 진짜 약점엔 실제 추론을 보강했다. 상세: [presentation/01_model_comparison/content_analysis.md](presentation/01_model_comparison/content_analysis.md)
+
 #### 태스크 처리 능력 상세 (Qwen3.5-4B, n=30)
 
 | 시나리오 | no adapter | Base(no FT) | SFT v4 | DPO v5 | 설명 |

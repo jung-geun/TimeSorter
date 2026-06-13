@@ -1,0 +1,256 @@
+{
+  "base": [
+    {
+      "idx": 0,
+      "scenario": "dated_mixed",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 1,
+      "scenario": "intraday",
+      "schema_pass": false,
+      "schema_viol": [
+        "오늘 17:00 마감(태스크 4)이 19:00 마감(태스크 1)보다 후순위"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "오늘 17:00 마감(태스크 4)이 19:00 마감(태스크 1)보다 후순위"
+      ]
+    },
+    {
+      "idx": 3,
+      "scenario": "risk",
+      "schema_pass": false,
+      "schema_viol": [
+        "JSON 파싱 실패"
+      ],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 8,
+      "scenario": "relative",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 9,
+      "scenario": "dependency_chain",
+      "schema_pass": false,
+      "schema_viol": [
+        "JSON 파싱 실패"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 태스크가 연속으로 배치되지 않음",
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 11,
+      "scenario": "dependency_chain",
+      "schema_pass": false,
+      "schema_viol": [
+        "체인 선행 태스크 2의 dependency가 4 미만",
+        "체인 선행 태스크 4의 dependency가 4 미만",
+        "마감 없는 태스크가 1위에 배치됨"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "체인 선행 태스크 2의 dependency가 4 미만",
+        "체인 선행 태스크 4의 dependency가 4 미만",
+        "마감 없는 태스크가 1위에 배치됨"
+      ]
+    }
+  ],
+  "instruct": [
+    {
+      "idx": 0,
+      "scenario": "dated_mixed",
+      "schema_pass": false,
+      "schema_viol": [
+        "JSON 파싱 실패"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "지난 일정 태스크 5가 유효 태스크보다 상위에 배치됨"
+      ]
+    },
+    {
+      "idx": 1,
+      "scenario": "intraday",
+      "schema_pass": false,
+      "schema_viol": [
+        "JSON 파싱 실패"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "오늘 17:00 마감(태스크 4)이 19:00 마감(태스크 1)보다 후순위"
+      ]
+    },
+    {
+      "idx": 3,
+      "scenario": "risk",
+      "schema_pass": false,
+      "schema_viol": [
+        "JSON 파싱 실패"
+      ],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 8,
+      "scenario": "relative",
+      "schema_pass": false,
+      "schema_viol": [
+        "JSON 파싱 실패"
+      ],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 9,
+      "scenario": "dependency_chain",
+      "schema_pass": false,
+      "schema_viol": [
+        "JSON 파싱 실패"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 11,
+      "scenario": "dependency_chain",
+      "schema_pass": false,
+      "schema_viol": [
+        "JSON 파싱 실패"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 2의 dependency가 4 미만",
+        "체인 선행 태스크 4의 dependency가 4 미만"
+      ]
+    }
+  ],
+  "sft": [
+    {
+      "idx": 0,
+      "scenario": "dated_mixed",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 1,
+      "scenario": "intraday",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 3,
+      "scenario": "risk",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 8,
+      "scenario": "relative",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 9,
+      "scenario": "dependency_chain",
+      "schema_pass": false,
+      "schema_viol": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 11,
+      "scenario": "dependency_chain",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    }
+  ],
+  "dpo": [
+    {
+      "idx": 0,
+      "scenario": "dated_mixed",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 1,
+      "scenario": "intraday",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 3,
+      "scenario": "risk",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 8,
+      "scenario": "relative",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    },
+    {
+      "idx": 9,
+      "scenario": "dependency_chain",
+      "schema_pass": false,
+      "schema_viol": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ],
+      "content_pass": false,
+      "content_viol": [
+        "체인 태스크의 순서가 단계 순서와 다름",
+        "체인 선행 태스크 1의 dependency가 4 미만"
+      ]
+    },
+    {
+      "idx": 11,
+      "scenario": "dependency_chain",
+      "schema_pass": true,
+      "schema_viol": [],
+      "content_pass": true,
+      "content_viol": []
+    }
+  ]
+}
