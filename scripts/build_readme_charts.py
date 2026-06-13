@@ -17,7 +17,16 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
-matplotlib.rcParams["font.family"] = ["DejaVu Sans", "sans-serif"]
+import matplotlib.font_manager as fm
+
+# Noto Sans CJK KR 등록 (한글 라벨 렌더링)
+_KO_FONT = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+try:
+    fm.fontManager.addfont(_KO_FONT)
+    _ko_name = fm.FontProperties(fname=_KO_FONT).get_name()
+    matplotlib.rcParams["font.family"] = [_ko_name, "DejaVu Sans", "sans-serif"]
+except Exception:
+    matplotlib.rcParams["font.family"] = ["DejaVu Sans", "sans-serif"]
 matplotlib.rcParams["axes.unicode_minus"] = False
 matplotlib.rcParams["figure.dpi"] = 150
 
