@@ -93,6 +93,38 @@ def main():
         n_pass = sum(1 for r in raw["models"][key]["results"] if r["passed"])
         lines.append(f"- {label}: {n_pass}/{n_q}")
 
+    # ── 1-3-C. 포맷 vs 추론 분리 채점 (content_n30.json) ──
+    cpath = PRES / "content_n30.json"
+    if cpath.exists():
+        cn = json.loads(cpath.read_text())
+        lines += [
+            "\n## 1-3-C. 포맷(스키마) vs 추론(내용) 분리 채점 (n=30)\n",
+            "> no-FT 모델은 tasks를 [\"문자열\"]로 출력해 스키마 채점은 실패하지만, "
+            "priority_order·scores는 정상. tasks id를 위치기반 재구성해 내용만 채점한 결과.\n",
+            "| 모델 | 스키마 통과 | 내용 통과 | 숨은 추론 능력 |",
+            "|------|-----------|----------|--------------|",
+        ]
+        for key, label in [("instruct", "Qwen3.5-4B (no FT)"),
+                           ("base", "Qwen3.5-4B-Base (no FT)")]:
+            m = cn["models"][key]; n = m["total"]
+            sp = m["schema_pass"] / n * 100
+            cp = m["content_pass"] / n * 100
+            lines.append(f"| {label} | {sp:.1f}% ({m['schema_pass']}/{n}) "
+                         f"| **{cp:.1f}%** ({m['content_pass']}/{n}) | +{cp-sp:.1f}%p |")
+        lines.append("| + SFT v4 / + DPO v5 | 90.0% | 90.0% | 0 (포맷=내용) |")
+        lines += [
+            "\n**instruct 시나리오별 (스키마 / 내용):**\n",
+            "| 시나리오 | 스키마 | 내용 |",
+            "|----------|-------|------|",
+        ]
+        ps = cn["models"]["instruct"]["per_scenario"]
+        for sc in SCENARIOS:
+            if sc in ps:
+                v = ps[sc]
+                lines.append(f"| {SC_LABEL[sc]} | {v['schema']}/{v['n']} | **{v['content']}/{v['n']}** |")
+        lines.append("\n> 리스크·상대날짜는 내용 100%(포맷만 미준수), 날짜혼재·체인은 진짜 추론 약점. "
+                     "상세: `content_analysis.md`")
+
     (PRES / "stats.md").write_text("\n".join(lines) + "\n")
     print(f"[saved] {PRES / 'stats.md'}")
 
