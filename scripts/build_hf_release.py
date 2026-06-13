@@ -123,6 +123,16 @@ print(dpo["tier"].value_counts().to_string())
 print(f"dpo_train: {len(dpo):,} (중복 제거 {before - len(dpo)})")
 print(dpo["version"].value_counts().to_string(), "\n")
 
+# ── DPO v5 실제 학습 파일 (재현용 단일 config) ───────────────────────────────
+# dpo_train(누적)과 별개로, DPO v5 학습에 실제 투입한 1,368쌍 그대로 보존.
+# 구성: on-policy 228 + v3 hard-negative 재사용 940 + refusal 200.
+dpo_v5 = pd.read_parquet("data/dpo_pairs_v5.parquet")
+dpo_v5 = norm(dpo_v5, "v5", DPO_COLS)
+dpo_v5["category"] = dpo_v5["category"].fillna("refusal").replace("", "refusal")
+dpo_v5.to_parquet(OUT / "dpo_v5_train.parquet", index=False)
+print(f"dpo_v5_train: {len(dpo_v5):,} (실제 v5 학습 파일)")
+print(dpo_v5["category"].value_counts().to_string(), "\n")
+
 # ── GRPO (골격 meta 보유 — 검증 가능 보상) ───────────────────────────────────
 GRPO_COLS = ["prompt", "persona", "today", "source", "meta"]
 grpo = pd.concat([

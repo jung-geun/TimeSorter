@@ -34,6 +34,7 @@ _FILES = {
     "data/sft_train.parquet": "data/hf_release/sft_train.parquet",
     "data/sft_v1_text.parquet": "data/hf_release/sft_v1_text.parquet",
     "data/dpo_train.parquet": "data/hf_release/dpo_train.parquet",
+    "data/dpo_v5_train.parquet": "data/hf_release/dpo_v5_train.parquet",
     "data/grpo_train.parquet": "data/hf_release/grpo_train.parquet",
     "data/eval_heldout.parquet": "data/hf_release/eval_heldout.parquet",
 }
@@ -54,6 +55,10 @@ configs:
   data_files:
   - split: train
     path: data/dpo_train.parquet
+- config_name: dpo_v5
+  data_files:
+  - split: train
+    path: data/dpo_v5_train.parquet
 - config_name: grpo
   data_files:
   - split: train
@@ -85,6 +90,8 @@ configs:
 - **dpo**: chosen/rejected 쌍. v3+는 형식 동일·내용만 오류인 hard negative
   (date_confusion/granularity_swap/dependency_scatter/risk_ignore/order_score_mismatch/past_hallucination).
   v5에는 학습된 모델이 실제로 위반한 출력을 rejected로 수집한 **on-policy 351쌍** 포함.
+- **dpo_v5**: DPO v5 학습에 **실제 투입한 1,368쌍** 그대로(재현용). 구성: on-policy 228 +
+  v3 hard-negative 재사용 940 + refusal 200. (누적 `dpo` config와 달리 단일 학습 파일)
 - **grpo**: 골격(meta JSON) 보유 프롬프트 — meta의 태스크별 마감·과거 여부·체인·리스크 정보로
   검증 가능한 보상 함수(RLVR)를 구성할 수 있다.
 - **eval**: 학습에 쓰지 않은 seed로 생성한 held-out 150 시나리오 (골격 규칙 자동 채점용).
@@ -151,7 +158,8 @@ if __name__ == "__main__":
     _CONFIG_LABEL = {
         "sft_train": ("sft", "train", "SFT 본 학습 (v2~v5+rework, curated 3.4K+rework 1.4K)"),
         "sft_v1_text": ("sft_v1_text", "train", "v1 자유 텍스트"),
-        "dpo_train": ("dpo", "train", "DPO 쌍 v1~v5 (on-policy 351쌍 포함)"),
+        "dpo_train": ("dpo", "train", "DPO 쌍 v1~v5 누적 (on-policy 351쌍 포함)"),
+        "dpo_v5_train": ("dpo_v5", "train", "DPO v5 실제 학습 파일 1,368쌍 (onpolicy 228+v3 hard-neg 940+refusal 200)"),
         "grpo_train": ("grpo", "train", "GRPO 프롬프트+골격 (v3~v5)"),
         "eval_heldout": ("eval", "test", "held-out 자동 평가"),
     }
