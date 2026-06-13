@@ -25,6 +25,11 @@
 
 ## 데이터셋 구성
 
+> **버저닝**: SFT/DPO 데이터를 분리하고 버전별 **증분(incremental)** 으로 관리한다. 규칙·버전별 특징·증분 목적은 [VERSIONING.md](VERSIONING.md) 참고.
+> - SFT 증분 (v1~v5): [pieroot/timesorter-sft-ko](https://huggingface.co/datasets/pieroot/timesorter-sft-ko)
+> - DPO 증분 (v1,v2,v3,v5): [pieroot/timesorter-dpo-ko](https://huggingface.co/datasets/pieroot/timesorter-dpo-ko)
+> - (구) 누적 통합본: [pieroot/timesorter-scheduler-ko](https://huggingface.co/datasets/pieroot/timesorter-scheduler-ko)
+
 ### v1 — 자유 텍스트 우선순위 응답
 
 | 파일 | 행 수 | 설명 |
