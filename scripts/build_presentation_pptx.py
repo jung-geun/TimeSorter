@@ -383,33 +383,34 @@ footer(s, 9)
 # ═══════════════════════════════════════════════════════════════════════════
 # Slide 10 — 학습 커브
 # ═══════════════════════════════════════════════════════════════════════════
-s = content_slide("RESULTS", "벤치마크 — 전체 학습 커브")
-add_image_fit(s, ASSETS / "chart_learning_curve.png", Inches(0.5), Inches(1.45),
-              Inches(12.35), Inches(4.6))
-add_text(s, Inches(0.5), Inches(6.2), Inches(12.3), Inches(1.0),
-         [("DPO v3(56.7%) → SFT v4(77.3%, +20.6%p) → Qwen3.5 업그레이드(90.0%, +12.7%p)",
-           dict(size=13, bold=True, color=NAVY, align=PP_ALIGN.CENTER)),
-          ("골격 규칙 기반 자동 채점 (held-out, 무처리 통과율)",
-           dict(size=11, italic=True, color=GRAY, align=PP_ALIGN.CENTER, space_before=2))])
+s = content_slide("RESULTS", "벤치마크 — 학습 여정의 두 점프")
+add_image_fit(s, ASSETS / "chart_milestones.png", Inches(1.6), Inches(1.45),
+              Inches(10.1), Inches(4.7))
+add_text(s, Inches(0.5), Inches(6.35), Inches(12.3), Inches(0.7),
+         [("성능 점프는 모델 구조가 아니라 데이터 큐레이션(+20.6%p)과 모델 업그레이드(+12.7%p)에서",
+           dict(size=13, bold=True, color=NAVY, align=PP_ALIGN.CENTER))])
 footer(s, 10)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Slide 11 — Qwen3.5 4모델 비교
 # ═══════════════════════════════════════════════════════════════════════════
-s = content_slide("RESULTS", "Qwen3.5-4B — Base / Instruct / SFT / DPO")
-add_image_fit(s, ASSETS / "chart_qwen35_comparison.png", Inches(0.5), Inches(1.45),
-              Inches(12.35), Inches(4.7))
-add_text(s, Inches(0.5), Inches(6.3), Inches(12.3), Inches(0.6),
-         [("좌: 전체 통과율 · 우: 시나리오별 처리능력 (n=30 held-out)",
-           dict(size=12, italic=True, color=GRAY, align=PP_ALIGN.CENTER))])
+s = content_slide("RESULTS", "Qwen3.5-4B 파인튜닝 단계별 통과율")
+add_image_fit(s, ASSETS / "chart_progression.png", Inches(1.6), Inches(1.45),
+              Inches(10.1), Inches(4.7))
+add_text(s, Inches(0.5), Inches(6.35), Inches(12.3), Inches(0.6),
+         [("어댑터 없음 0% → Base 16.7% → SFT 90% → DPO 90% (held-out n=30)",
+           dict(size=13, italic=True, color=GRAY, align=PP_ALIGN.CENTER))])
 footer(s, 11)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Slide 12 — 시나리오별 히트맵
 # ═══════════════════════════════════════════════════════════════════════════
-s = content_slide("RESULTS", "시나리오별 통과율 히트맵")
-add_image_fit(s, ASSETS / "chart_scenario_heatmap.png", Inches(1.5), Inches(1.45),
-              Inches(10.3), Inches(5.4))
+s = content_slide("RESULTS", "시나리오별 통과율 — SFT vs DPO")
+add_image_fit(s, ASSETS / "chart_scenario.png", Inches(1.3), Inches(1.45),
+              Inches(10.7), Inches(4.7))
+add_text(s, Inches(0.5), Inches(6.35), Inches(12.3), Inches(0.6),
+         [("대부분 시나리오 90~100% · 의존성 체인만 67%로 공통 막힘 (SFT·DPO 동일)",
+           dict(size=13, bold=True, color=NAVY, align=PP_ALIGN.CENTER))])
 footer(s, 12)
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -468,17 +469,25 @@ footer(s, 14)
 # Slide 15 — 핵심 발견 ② + 위반 추이
 # ═══════════════════════════════════════════════════════════════════════════
 s = content_slide("KEY FINDING ②", "DPO는 '능력 부재'를 해결하지 못한다")
-add_image_fit(s, ASSETS / "chart_violation_trend.png", Inches(0.5), Inches(1.4),
-              Inches(7.4), Inches(5.4))
-add_box(s, Inches(8.1), Inches(1.5), Inches(4.75), Inches(5.0), fill=LIGHT, line=BLUE)
-add_text(s, Inches(8.28), Inches(1.65), Inches(4.4), Inches(4.8),
-         [("의존성 체인 약점", dict(size=15, bold=True, color=BLUE, space_after=6)),
-          ("SFT v4와 DPO v5가 체인 쿼리에서 글자 단위로 동일하게 실패", dict(size=12, color=DARK, bullet=True, space_after=6)),
-          ("같은 priority_order [5,3,4,1,2], 같은 dependency=2 → 같은 위반 2건", dict(size=11.5, color=GRAY, level=1, space_after=8)),
-          ("체인은 '선호 문제'가 아니라 '능력 부재'", dict(size=12, bold=True, color=ORANGE, bullet=True, space_after=4)),
-          ("DPO는 모델이 정답을 생성할 수 있는데 잘못 선택할 때만 효과적", dict(size=11.5, color=GRAY, level=1, space_after=8)),
-          ("reward_accuracy 98.9% → 이미 아는 것 재학습", dict(size=12, color=DARK, bullet=True, space_after=6)),
-          ("해결책: chain 특화 SFT 데이터 3× 증량 (선호학습 아님)", dict(size=12, bold=True, color=GREEN, bullet=True))])
+add_box(s, Inches(0.5), Inches(1.55), Inches(12.35), Inches(1.35), fill=RGBColor(0xFD,0xF3,0xE7), line=ORANGE, line_w=Pt(2))
+add_text(s, Inches(0.7), Inches(1.68), Inches(12), Inches(1.15),
+         [("의존성 체인에서 SFT v4와 DPO v5가 글자 단위로 동일하게 실패", dict(size=16, bold=True, color=ORANGE, space_after=4)),
+          ("같은 priority_order [5,3,4,1,2], 같은 dependency=2 → 동일한 위반 2건. DPO가 체인을 전혀 안 옮겼다.",
+           dict(size=12.5, color=DARK))])
+add_table(s, Inches(0.5), Inches(3.2), Inches(12.35), Inches(1.5),
+          [["시나리오", "SFT v4", "DPO v5", "변화"],
+           ["날짜혼재·당일시각·상대날짜", "89~100%", "100%", "유지/소폭 개선"],
+           ["의존성 체인", "67%", "67%", "0 (불변)"]],
+          col_widths=[Inches(5.35), Inches(2.3), Inches(2.3), Inches(2.4)],
+          font_size=13, header_fill=ORANGE)
+add_text(s, Inches(0.5), Inches(5.1), Inches(12.3), Inches(1.8),
+         [("왜 DPO가 체인을 못 고쳤나", dict(size=14, bold=True, color=NAVY, space_after=5)),
+          ("DPO는 '모델이 정답을 생성할 수 있는데 잘못 선택'할 때만 효과적 — 체인은 4B 모델의 능력 부재라 선호학습으로 안 됨",
+           dict(size=12.5, color=DARK, bullet=True, space_after=4)),
+          ("reward_accuracy 98.9% → 이미 아는 것을 재학습한 셈 (가중치 변화 미미)",
+           dict(size=12.5, color=DARK, bullet=True, space_after=4)),
+          ("해결책: 4–5단계 긴 체인 특화 SFT 데이터 3× 증량 (선호학습이 아닌 능력 보강)",
+           dict(size=12.5, bold=True, color=GREEN, bullet=True))])
 footer(s, 15)
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -349,7 +349,7 @@ Q2 보고서 우선을 기대하면 consistency 감점 요인이 되기도 — �
 
 `scripts/eval_scheduler.py` / `scripts/benchmark_qwen35.py` — 골격 규칙(지난 일정 순위·당일 시각 순서·체인 연속성·리스크 importance)으로 자동 채점. 차트는 `scripts/build_readme_charts.py`로 재생성.
 
-![학습 커브](assets/chart_learning_curve.png)
+![학습 여정](assets/chart_milestones.png)
 
 #### 전체 체크포인트 통과율
 
@@ -385,9 +385,9 @@ Q2 보고서 우선을 기대하면 consistency 감점 요인이 되기도 — �
 
 ### Qwen3.5-4B — Base / Instruct / SFT / DPO 비교
 
-![Qwen3.5 비교](assets/chart_qwen35_comparison.png)
+![Qwen3.5 단계별 통과율](assets/chart_progression.png)
 
-왼쪽: 전체 태스크 완료율(overall pass rate). 오른쪽: 시나리오별 태스크 처리 능력.
+파인튜닝 없이는 출력 규격 미준수로 0%, SFT로 90% 도달. (자세한 원인은 핵심 발견 ① 참조)
 
 #### 태스크 처리 능력 상세 (Qwen3.5-4B, n=30)
 
@@ -401,11 +401,11 @@ Q2 보고서 우선을 기대하면 consistency 감점 요인이 되기도 — �
 
 ---
 
-### 시나리오별 히트맵 & 위반 유형 추이
+### 시나리오별 통과율 & 위반 유형 추이
 
-![시나리오 히트맵](assets/chart_scenario_heatmap.png)
+![시나리오별 통과율](assets/chart_scenario.png)
 
-![위반 유형 추이](assets/chart_violation_trend.png)
+> SFT v4와 DPO v5는 의존성 체인(67%)에서 동일하게 막힘 — DPO가 체인 약점을 못 옮김.
 
 #### 위반 유형별 변화 (Qwen3-4B 150샘플 기준)
 
