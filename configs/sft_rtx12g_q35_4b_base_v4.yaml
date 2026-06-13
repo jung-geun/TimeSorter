@@ -1,0 +1,39 @@
+# Stage 2 SFT v4 (Qwen3.5-4B-Base) — RTX 12GB, 4bit QLoRA
+# Qwen3.5-4B (Instruct) 대비 실험: 사전학습 베이스에서 직접 태스크 특화 SFT
+# Base 모델은 RLHF 미적용 → 동일 SFT 데이터로 Instruct vs Base 성능 비교 목적
+#
+# 실행:
+#   uv run python scripts/train_sft.py --config configs/sft_rtx12g_q35_4b_base_v4.yaml
+model_name: Qwen/Qwen3.5-4B-Base
+dataset: data/sft_v4_train.parquet
+output_dir: outputs/sft_q35_4b_base_v4
+max_samples: null
+ko_ultrafeedback_n: 0
+max_seq_length: 1536
+schema_version: "v3"
+prompt_completion: true
+wandb_run_name: sft_q35_4b_base_v4
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true        # 12GB: 4bit NF4 필수
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32  # eff_batch 32
+  num_train_epochs: 3              # Base는 Instruct 대비 더 많은 epoch 필요할 수 있음
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  packing: true
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"
