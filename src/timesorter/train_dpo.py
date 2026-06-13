@@ -334,7 +334,25 @@ def _init_wandb(cfg: RunConfig) -> None:
     )
 
 
+def _patch_qwen35_fast_path() -> None:
+    """Force Qwen3.5 to use fla's chunk_gated_delta_rule even without causal_conv1d.
+
+    is_fast_path_available requires all four symbols; causal_conv1d won't build
+    without nvcc, but the model already has a torch fallback for causal_conv1d_fn.
+    Patching to True lets fla handle the delta-rule (fixing the cudaErrorIllegalAddress
+    bug in torch_chunk_gated_delta_rule) while the conv still uses the torch path.
+    """
+    try:
+        import transformers.models.qwen3_5.modeling_qwen3_5 as _qwen35
+        if not _qwen35.is_fast_path_available:
+            _qwen35.is_fast_path_available = True
+            print("[patch] Qwen3.5 is_fast_path_available forced True (fla delta-rule active)")
+    except Exception as e:
+        print(f"[patch] Could not patch Qwen3.5 fast path: {e}")
+
+
 def main(config_path: str) -> None:
+    _patch_qwen35_fast_path()
     _load_dotenv()
 
     cfg = RunConfig.from_yaml(config_path)

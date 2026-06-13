@@ -243,8 +243,8 @@ v4의 residual weakness(dependency_chain 43%)를 타깃: Claude 에이전트가 
 
 | 단계 | 어댑터 경로 | 데이터셋 | 샘플 수 | train_loss | 비고 |
 |------|-----------|---------|--------|-----------|------|
-| **SFT v4** | **`outputs/sft_q35_4b_v4`** *(진행 중)* | sft_v4_train (curated) | 6,056 | 진행 중 | prompt_completion=true, max_seq 1536 |
-| DPO v5 | `outputs/dpo_q35_4b_v5` *(예정)* | dpo_pairs_v5 (on-policy) | 1,368쌍 | — | SFT v4 완료 후 자동 시작 |
+| **SFT v4** | **`outputs/sft_q35_4b_v4`** | sft_v4_train (curated) | 6,056 | — | prompt_completion=true, max_seq 1536 |
+| **DPO v5** | **`outputs/dpo_q35_4b_v5`** | dpo_pairs_v5 (on-policy) | 1,368쌍 | **0.1706** | val **90.0%** (27/30) · reward_acc=98.9% · margin=3.495 · 잔여 위반: chain순서 2건, chain_dep 2건, past_rank 1건 |
 
 ### v4에서 나타난 특징과 변화 (2026-06-12)
 

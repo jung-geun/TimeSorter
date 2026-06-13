@@ -92,7 +92,7 @@ def main() -> None:
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": str(row["prompt"])}],
             max_tokens=2048, temperature=0.0,
-            extra_body={"guided_json": ScheduleResponse.model_json_schema()},
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
         raw = (resp.choices[0].message.content or "").strip()
         parsed = parse_or_repair(raw)
