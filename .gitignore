@@ -29,3 +29,7 @@ models/
 
 # 학습된 어댑터 및 체크포인트 (재학습으로 재생성)
 outputs/
+
+# v6 버저닝 생성 산출물 (HF 업로드본 — build_versioned_datasets.py / v6_*.py 로 재생성)
+data/hf_versioned/
+data/v6_audit/

@@ -19,6 +19,25 @@ TimeSorter 학습 데이터는 **SFT용·DPO용을 분리**하고, **버전별 �
    4. uv run python scripts/upload_hf_versioned.py        # 2개 repo에 vN config 추가
    ```
 
+## v6 — 통합·검수 자립형 데이터셋 (권장)
+
+`v1`~`v5`가 증분이라면, **`v6`은 v2~v5 전체를 검수·통합한 자립형 단일 데이터셋**이다.
+증분 누적 없이 **`v6` 단독으로 학습**할 수 있다 (HF 기본 config).
+
+| 구분 | 행 수 | 구성 |
+|------|------|------|
+| SFT v6 | **14,314** | 검수된 v2 10,958 + 큐레이션 v3-v5 3,356 (drop 0) |
+| DPO v6 | **17,894** | 검수된 v2 15,321 + 큐레이션 v3/v5 2,573 (drop 0) |
+
+**검수 방법** (`scripts/v6_prep.py` → workflow → `scripts/v6_assemble.py`):
+- v3-v5(meta 보유): `verify_chosen` 골격 규칙 자동검증 통과분만 포함
+- v2(meta 없음): **opus 하위 에이전트 264개**로 전수 검수·수정 (100행/배치)
+  - SFT: priority_order↔4축 점수 정합 1,188건 수정, JSON·스키마 검증
+  - DPO: chosen 정답성·rejected valid-but-worse 4,732건 수정
+- **최대한 보존**: drop 0. DPO rejected 중 2,821건은 malformed JSON 유지 — "잘못된 출력 회피"를 가르치는 정당한 negative.
+
+**향후**: v6 이후 새 데이터는 v7 증분으로 추가하거나, 다시 전체 검수해 v7 자립형으로 통합.
+
 ## SFT 버전별 증분
 
 | 버전 | 행 수 | 제목 | 증분 목적 |

@@ -52,9 +52,10 @@ def build_card(kind: str, meta: dict, present: list[str]) -> str:
                  "task_categories: [text-generation]",
                  f"tags: [scheduling, prioritization, korean, {kind}, incremental, timesorter]",
                  "configs:"]
-    for i, v in enumerate(present):
+    default_v = "v6" if "v6" in present else present[0]
+    for v in present:
         cfg_lines += [f"- config_name: {v}",
-                      "  default: true" if i == 0 else None,
+                      "  default: true" if v == default_v else None,
                       "  data_files:",
                       "  - split: train",
                       f"    path: data/{v}.parquet"]
@@ -78,8 +79,10 @@ def build_card(kind: str, meta: dict, present: list[str]) -> str:
 
 {intro}
 
-> **버저닝 규칙**: 각 `vN`은 그 버전에서 새로 생성된 **증분 데이터만** 포함(누적 아님).
-> `vN` 모델 학습 = `v1`..`vN` 증분을 누적해서 사용. 업로드는 증분 단위로 추적성 확보.
+> **버저닝 규칙**: `v1`~`v5`는 각 버전에서 새로 생성된 **증분 데이터만** 포함(누적 아님) —
+> `vN` 모델 학습 = `v1`..`vN` 증분 누적. **`v6`은 v2~v5 전체를 검수·통합한 자립형(self-contained)
+> 데이터셋**으로, 증분 누적 없이 **`v6` 단독으로 학습 가능**(기본 config).
+> v6의 v2 구간은 opus 하위 에이전트로 전수 검수·수정했다.
 > SFT 데이터: [{REPOS['sft']}](https://huggingface.co/datasets/{REPOS['sft']}) ·
 > DPO 데이터: [{REPOS['dpo']}](https://huggingface.co/datasets/{REPOS['dpo']})
 
