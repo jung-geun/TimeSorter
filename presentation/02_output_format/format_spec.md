@@ -102,6 +102,10 @@ SFT의 목적은 **"4축 JSON 포맷과 채점 규칙 자체를 모델에 주입
 | `date_confusion` | 177 | 지난 날짜를 오늘/미래로 착각 |
 | `risk_ignore` | 92 | 에스컬레이션·위약금 리스크를 importance에 미반영 |
 | `past_hallucination` | 36 | 오늘 미상인데 '지났다'고 단정 |
+| (refusal, category 없음) | 200 | 비일정 입력 거절 학습 쌍 (refusal_v2/*) |
+| **합계** | **1,368** | |
+
+> `onpolicy` 228쌍 세부: dependency_chain 154 · dated_mixed 41 · no_today 16 · intraday 9 · past_split 6 · relative 1 · risk 1.
 
 > hard negative의 핵심: rejected는 **형식이 chosen과 100% 동일**하고 **단 하나의 규칙만** 틀리게 만든다. 그래야 DPO가 "포맷"이 아니라 "그 규칙 위반"만을 벌점한다.
 

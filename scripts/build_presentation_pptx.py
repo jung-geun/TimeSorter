@@ -287,16 +287,19 @@ add_text(s, Inches(7.05), Inches(1.6), Inches(5.6), Inches(2.5),
           ("'좋은 답(chosen) vs 나쁜 답(rejected)' 쌍 필요", dict(size=12, color=DARK, space_after=4)),
           ("+ rejected · category(위반유형)", dict(size=11.5, color=GRAY)),
           ("목적: 한 가지 규칙만 틀린 hard negative로 그 규칙 위반을 벌점", dict(size=11.5, italic=True, color=ORANGE, space_before=6))])
-add_text(s, Inches(0.5), Inches(4.35), Inches(12), Inches(0.4),
-         [("DPO rejected 위반 유형 분포 (v5)", dict(size=13, bold=True, color=NAVY))])
-add_table(s, Inches(0.5), Inches(4.8), Inches(12.35), Inches(1.9),
+add_text(s, Inches(0.5), Inches(4.3), Inches(12), Inches(0.4),
+         [("DPO 쌍 구성 (v5, 총 1,368쌍)", dict(size=13, bold=True, color=NAVY))])
+add_table(s, Inches(0.5), Inches(4.72), Inches(12.35), Inches(2.0),
           [["유형", "쌍", "rejected가 일부러 저지른 오류"],
            ["order_score_mismatch", "230", "점수는 맞는데 순서가 점수와 모순"],
+           ["onpolicy", "228", "SFT 모델이 실제 생성한 오답 (체인 154 등)"],
            ["granularity_swap", "220", "마감 단위(시각↔날짜) 혼동"],
-           ["date_confusion", "177", "지난 날짜를 오늘/미래로 착각"],
            ["dependency_scatter", "185", "의존성 체인을 분산 배치"],
-           ["risk_ignore / past_hallucination", "92 / 36", "리스크 미반영 / 지남 단정"]],
-          col_widths=[Inches(4.3), Inches(1.8), Inches(6.25)], font_size=12, header_fill=ORANGE)
+           ["date_confusion", "177", "지난 날짜를 오늘/미래로 착각"],
+           ["risk_ignore / past_hallucination", "92 / 36", "리스크 미반영 / 지남 단정"],
+           ["refusal (거절 쌍)", "200", "비일정 입력 거절 학습"],
+           ["합계", "1,368", "—"]],
+          col_widths=[Inches(4.3), Inches(1.8), Inches(6.25)], font_size=11, header_fill=ORANGE)
 footer(s, 6)
 
 # ═══════════════════════════════════════════════════════════════════════════
