@@ -427,10 +427,9 @@ s = content_slide("RESULTS", "모델 크기 효과 — Qwen3.5 4B vs 9B")
 add_image_fit(s, ASSETS / "chart_4b_vs_9b.png", Inches(0.5), Inches(1.45),
               Inches(12.35), Inches(4.5))
 add_text(s, Inches(0.5), Inches(6.1), Inches(12.3), Inches(1.0),
-         [("9B(2.3× 크기, RTX 4090, n=150)은 리스크 80→95% 등 약점을 평준화하나, "
-           "의존성 체인은 57%로 여전히 최대 약점",
+         [("동일 표본(n=150): 4B 85.3% vs 9B 88.7% (+3.4%p) — 9B는 당일시각·체인에서 앞섬",
            dict(size=13, bold=True, color=NAVY, align=PP_ALIGN.CENTER)),
-          ("→ 체인은 모델 크기가 아니라 SFT 데이터 보강이 필요한 문제 (4B n=30·9B n=150, 표본차 감안)",
+          ("→ 체인은 4B 47%·9B 57%로 둘 다 미해결 — 모델 크기가 아니라 SFT 데이터 보강 문제",
            dict(size=11, italic=True, color=GRAY, align=PP_ALIGN.CENTER, space_before=3))])
 footer(s, 13)
 
@@ -463,7 +462,7 @@ add_table(s, Inches(7.9), Inches(1.5), Inches(5.0), Inches(4.6),
            ["DPO reward_acc", "97.5%", "88.0%"],
            ["DPO margin", "3.50", "0.099"],
            ["DPO 시간", "~0.5h", "2.5h"],
-           ["검증 통과율", "90.0%", "88.7%"]],
+           ["검증(n=150)", "85.3%", "88.7%"]],
           col_widths=[Inches(2.3), Inches(1.45), Inches(1.25)], font_size=11.5)
 add_text(s, Inches(0.4), Inches(6.05), Inches(12.5), Inches(1.0),
          [("SFT(동일 데이터): 9B도 4B와 거의 동일 — 모델 2.3×로도 SFT 학습 이득 미미",

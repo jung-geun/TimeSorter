@@ -26,8 +26,8 @@ ASSETS = Path("assets")
 BLUE, GREEN, RED, TEXT = "#3D6FB4", "#5FA86E", "#C0392B", "#222222"
 
 SC = ["날짜 혼재", "당일 시각", "리스크", "상대 날짜", "의존성 체인"]
-# 최종 모델 기준
-M4B = {"overall": 90.0, "n": 30, "sc": [100, 100, 80, 100, 67]}    # Qwen3.5-4B DPO v5 (n=30)
+# 최종 모델(SFT+DPO) 기준 — 둘 다 n=150 동일 표본
+M4B = {"overall": 85.3, "n": 150, "sc": [96, 90, 100, 93, 47]}    # Qwen3.5-4B DPO v5 (n=150)
 M9B = {"overall": 88.7, "n": 150, "sc": [98, 97, 95, 93, 57]}      # Qwen3.5-9B DPO v4 (n=150)
 
 fig, axes = plt.subplots(1, 2, figsize=(13, 5.3))
@@ -72,4 +72,4 @@ plt.tight_layout()
 out = ASSETS / "chart_4b_vs_9b.png"
 plt.savefig(out, dpi=150, bbox_inches="tight"); plt.close()
 print(f"[saved] {out}")
-print("주의: 4B는 n=30(빠른 평가), 9B는 n=150(전체 held-out) — 표본 크기 다름.")
+print("4B·9B 둘 다 n=150(전체 held-out) — 동일 표본 비교. 9B가 +3.4%p (체인 +10%p).")

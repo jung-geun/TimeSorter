@@ -81,7 +81,7 @@ def _style(ax):
 # ── 1. 파인튜닝 단계별 통과율 (헤드라인) ─────────────────────────────────────
 def chart_progression():
     labels = ["어댑터 없음\n(Instruct)", "Base\n(RLHF 미적용)", "+ SFT v4", "+ DPO v5"]
-    vals   = [0.0, 16.7, 90.0, 90.0]
+    vals   = [0.0, 14.7, 85.3, 85.3]
     colors = [GRAY, GREEN, BLUE, NAVY]
 
     fig, ax = plt.subplots(figsize=(9, 5.2))
@@ -96,14 +96,14 @@ def chart_progression():
     ax.set_xticklabels(labels, fontsize=12)
     ax.set_ylim(0, 105)
     ax.set_ylabel("통과율 (%)", fontsize=12)
-    ax.set_title("Qwen3.5-4B 파인튜닝 단계별 통과율 (held-out n=30)",
+    ax.set_title("Qwen3.5-4B 파인튜닝 단계별 통과율 (held-out n=150)",
                  fontsize=15, fontweight="bold", pad=14)
     _style(ax)
 
     # 핵심 화살표 주석
-    ax.annotate("", xy=(2, 90), xytext=(0, 12),
+    ax.annotate("", xy=(2, 85.3), xytext=(0, 12),
                 arrowprops=dict(arrowstyle="->", color=BLUE, lw=2, alpha=0.7))
-    ax.text(1.0, 58, "파인튜닝으로\n0% → 90%", ha="center", fontsize=12.5,
+    ax.text(1.0, 55, "파인튜닝으로\n0% → 85%", ha="center", fontsize=12.5,
             fontweight="bold", color=BLUE,
             bbox=dict(boxstyle="round,pad=0.35", fc="#EAF1F9", ec=BLUE, alpha=0.9))
 
@@ -115,10 +115,10 @@ def chart_progression():
 
 # ── 2. 시나리오별 통과율 (SFT vs DPO) ────────────────────────────────────────
 def chart_scenario():
-    sft = _scrates(_load("outputs/eval_qwen35_sft_q35_n30.json"))
-    dpo = _scrates(DPO_Q35)
-    sft_v = [sft.get(s, 0) for s in SCENARIOS]
-    dpo_v = [dpo.get(s, 0) for s in SCENARIOS]
+    # n=150 4-way 결과 (SFT=DPO 동일): dated 96·intraday 90·risk 100·relative 93·chain 47
+    sc150 = {"dated_mixed": 96, "intraday": 90, "risk": 100, "relative": 93, "dependency_chain": 47}
+    sft_v = [sc150[s] for s in SCENARIOS]
+    dpo_v = [sc150[s] for s in SCENARIOS]
 
     fig, ax = plt.subplots(figsize=(10, 5.2))
     x = np.arange(len(SCENARIOS))
@@ -134,13 +134,13 @@ def chart_scenario():
     ax.set_xticklabels(SC_KO, fontsize=12)
     ax.set_ylim(0, 112)
     ax.set_ylabel("통과율 (%)", fontsize=12)
-    ax.set_title("시나리오별 통과율 — SFT v4 vs DPO v5 (Qwen3.5-4B)",
+    ax.set_title("시나리오별 통과율 — SFT v4 vs DPO v5 (Qwen3.5-4B, n=150)",
                  fontsize=15, fontweight="bold", pad=14)
     ax.legend(fontsize=12, loc="lower left", frameon=False)
     _style(ax)
 
     # 체인 약점 강조
-    ax.annotate("공통 약점\n(능력 부재)", xy=(4, 67), xytext=(3.5, 40),
+    ax.annotate("공통 약점\n(능력 부재)", xy=(4, 47), xytext=(3.4, 22),
                 ha="center", fontsize=11.5, fontweight="bold", color=RED,
                 arrowprops=dict(arrowstyle="->", color=RED, lw=1.5),
                 bbox=dict(boxstyle="round,pad=0.3", fc="#FBECEA", ec=RED, alpha=0.9))
@@ -154,7 +154,7 @@ def chart_scenario():
 # ── 3. 학습 여정 마일스톤 ────────────────────────────────────────────────────
 def chart_milestones():
     labels = ["DPO v3\n(Qwen3-4B)", "SFT v4\n(Qwen3-4B)", "SFT+DPO\n(Qwen3.5-4B)"]
-    vals   = [56.7, 77.3, 90.0]
+    vals   = [56.7, 77.3, 85.3]
     colors = [GRAY, BLUE, NAVY]
 
     fig, ax = plt.subplots(figsize=(9, 5.2))
@@ -177,9 +177,9 @@ def chart_milestones():
     ax.text(0.5, 70, "+20.6%p\n데이터 큐레이션\n+ Loss 마스킹", ha="center",
             fontsize=11, fontweight="bold", color=BLUE,
             bbox=dict(boxstyle="round,pad=0.3", fc="#EAF1F9", ec=BLUE, alpha=0.9))
-    ax.annotate("", xy=(2, 90.0), xytext=(1, 77.3),
+    ax.annotate("", xy=(2, 85.3), xytext=(1, 77.3),
                 arrowprops=dict(arrowstyle="->", color=ORANGE, lw=2))
-    ax.text(1.5, 86, "+12.7%p\n모델 업그레이드", ha="center",
+    ax.text(1.5, 84, "+8.0%p\n모델 업그레이드", ha="center",
             fontsize=11, fontweight="bold", color=ORANGE,
             bbox=dict(boxstyle="round,pad=0.3", fc="#FDF1E6", ec=ORANGE, alpha=0.9))
 
