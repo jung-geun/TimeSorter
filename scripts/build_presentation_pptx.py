@@ -100,9 +100,13 @@ def content_slide(kicker, title):
     return s
 
 
-def footer(slide, n):
+_page = [1]  # 타이틀=1, 이후 footer 호출 순서대로 자동 증가
+
+
+def footer(slide, n=None):
+    _page[0] += 1
     add_text(slide, Inches(11.8), Inches(7.05), Inches(1.4), Inches(0.35),
-             [(f"{n}", dict(size=10, color=GRAY, align=PP_ALIGN.RIGHT))])
+             [(f"{_page[0]}", dict(size=10, color=GRAY, align=PP_ALIGN.RIGHT))])
 
 
 # ── 표 헬퍼 ──────────────────────────────────────────────────────────────────
@@ -441,7 +445,32 @@ add_text(s, Inches(0.5), Inches(6.2), Inches(12.3), Inches(0.9),
            dict(size=13, bold=True, color=NAVY, align=PP_ALIGN.CENTER)),
           ("SFT=DPO 완전 동일(체인 4/6 고착) — 9B에서도 DPO가 체인을 못 옮김",
            dict(size=11, italic=True, color=GRAY, align=PP_ALIGN.CENTER, space_before=3))])
-footer(s, 14)
+footer(s)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Slide — 학습 지표 비교 4B vs 9B
+# ═══════════════════════════════════════════════════════════════════════════
+s = content_slide("TRAINING METRICS", "학습 지표 비교 — 4B vs 9B")
+add_image_fit(s, ASSETS / "chart_train_metrics_4b_9b.png", Inches(0.4), Inches(1.4),
+              Inches(7.3), Inches(4.4))
+add_table(s, Inches(7.9), Inches(1.5), Inches(5.0), Inches(4.6),
+          [["지표", "4B", "9B"],
+           ["파라미터", "4.2B", "9.4B"],
+           ["GPU", "3080Ti 12G", "4090 24G"],
+           ["SFT train_loss", "0.309", "0.320"],
+           ["SFT token acc", "90.8%", "91.5%"],
+           ["SFT 시간", "9.5h", "11.5h"],
+           ["DPO reward_acc", "97.5%", "88.0%"],
+           ["DPO margin", "3.50", "0.099"],
+           ["DPO 시간", "~0.5h", "2.5h"],
+           ["검증 통과율", "90.0%", "88.7%"]],
+          col_widths=[Inches(2.3), Inches(1.45), Inches(1.25)], font_size=11.5)
+add_text(s, Inches(0.4), Inches(6.05), Inches(12.5), Inches(1.0),
+         [("SFT(동일 데이터): 9B도 4B와 거의 동일 — 모델 2.3×로도 SFT 학습 이득 미미",
+           dict(size=12.5, bold=True, color=NAVY, align=PP_ALIGN.CENTER)),
+          ("DPO(데이터 다름): margin 차이(3.50 vs 0.099)는 모델이 아닌 데이터 난이도(on-policy vs v4_extra) 탓",
+           dict(size=11, italic=True, color=GRAY, align=PP_ALIGN.CENTER, space_before=3))])
+footer(s)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Slide 15 — 4모델 실제 출력 비교

@@ -244,6 +244,24 @@ docker run --rm --gpus '"device=0"' \
 
 ![9B 포맷 vs 추론](../../assets/chart_9b_schema_vs_content.png)
 
+## 학습 지표 비교 — 4B vs 9B
+
+![학습 지표 4B vs 9B](../../assets/chart_train_metrics_4b_9b.png)
+
+| 지표 | Qwen3.5-4B (3080Ti 12G) | Qwen3.5-9B (4090 24G) |
+|------|------------------------|----------------------|
+| SFT train_loss | 0.642 → **0.309** | → **0.320** |
+| SFT token accuracy | 90.8% | 91.5% |
+| SFT 학습 시간 | 9.5h | 11.5h |
+| DPO train_loss | 0.166 | 0.65 |
+| DPO reward accuracy | 97.5% | 88.0% |
+| DPO reward margin | 3.50 | 0.099 |
+| DPO 학습 시간 | ~0.5h | 2.5h |
+| 검증 통과율 | 90.0% (n=30) | 88.7% (n=150) |
+
+- **SFT는 동일 데이터(sft_v4_train 6,056)** → 공정 비교. 9B의 SFT 성능은 4B와 거의 동일(token acc +0.7%p) — 모델 2.3×로도 SFT 학습 자체엔 이득 미미.
+- **DPO는 데이터가 다름**(4B=dpo_v5 on-policy / 9B=dpo_v4_extra) → 직접 비교 불가. margin 차이(3.50 vs 0.099)는 모델이 아닌 **DPO 데이터 난이도** 때문(on-policy hard-negative는 분리가 큼).
+
 ## 주요 발견 및 한계
 
 ### 잘 된 점
