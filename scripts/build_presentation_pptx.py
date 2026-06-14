@@ -431,7 +431,20 @@ add_text(s, Inches(0.5), Inches(6.1), Inches(12.3), Inches(1.0),
 footer(s, 13)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Slide 14 — 4모델 실제 출력 비교
+# Slide 14 — 9B 4-way 포맷 vs 추론
+# ═══════════════════════════════════════════════════════════════════════════
+s = content_slide("RESULTS", "Qwen3.5-9B 4-way — 포맷 vs 추론 (n=30)")
+add_image_fit(s, ASSETS / "chart_9b_schema_vs_content.png", Inches(0.5), Inches(1.45),
+              Inches(12.35), Inches(4.6))
+add_text(s, Inches(0.5), Inches(6.2), Inches(12.3), Inches(0.9),
+         [("9B도 4B와 동일 패턴 — no-adapter 스키마 0%지만 내용 46.7%(포맷만 미준수), SFT가 93.3%로 고정",
+           dict(size=13, bold=True, color=NAVY, align=PP_ALIGN.CENTER)),
+          ("SFT=DPO 완전 동일(체인 4/6 고착) — 9B에서도 DPO가 체인을 못 옮김",
+           dict(size=11, italic=True, color=GRAY, align=PP_ALIGN.CENTER, space_before=3))])
+footer(s, 14)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Slide 15 — 4모델 실제 출력 비교
 # ═══════════════════════════════════════════════════════════════════════════
 s = content_slide("COMPARISON", "4모델 실제 출력 비교 (동일 쿼리)")
 add_table(s, Inches(0.5), Inches(1.55), Inches(12.35), Inches(1.5),
@@ -458,10 +471,10 @@ add_text(s, Inches(7.0), Inches(3.5), Inches(5.7), Inches(3.1),
           ('"scores":[...]}', dict(size=11.5, color=DARK, font=MONO)),
           ("정확한 {id,text} 객체 스키마 준수", dict(size=11, italic=True, color=GREEN, space_before=5)),
           ("→ 지난 일정(id=5) 최하위, urgency=1 강등", dict(size=11, color=GRAY, space_before=3))])
-footer(s, 14)
+footer(s, 15)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Slide 15 — 핵심 발견 ①
+# Slide 16 — 핵심 발견 ①
 # ═══════════════════════════════════════════════════════════════════════════
 s = content_slide("KEY FINDING ①", "파인튜닝의 1차 효과는 '스키마 준수'")
 add_image_fit(s, ASSETS / "chart_schema_vs_content.png", Inches(0.4), Inches(1.4),
@@ -475,10 +488,10 @@ add_text(s, Inches(8.78), Inches(1.65), Inches(3.95), Inches(4.8),
           ("base 16.7% → 내용 40.0%", dict(size=12.5, bold=True, color=BLUE, level=1, space_after=6)),
           ("추론 능력의 40%+ 는 이미 있었다 — 파인튜닝이 그것을 앱 규격으로 고정", dict(size=11.5, color=GRAY, bullet=True, space_after=5)),
           ("FT 모델은 스키마=내용 (갭 없음)", dict(size=11.5, color=GRAY, bullet=True))])
-footer(s, 15)
+footer(s, 16)
 
 # ─────────────────────────────────────────────────────────────────────────
-# Slide 16 — 핵심 발견 ① 보강: 시나리오별 포맷 vs 내용
+# Slide 17 — 핵심 발견 ① 보강: 시나리오별 포맷 vs 내용
 # ─────────────────────────────────────────────────────────────────────────
 s = content_slide("KEY FINDING ①-b", "no-FT 모델의 숨은 추론 능력 — 시나리오별")
 add_text(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.55),
@@ -499,10 +512,10 @@ add_text(s, Inches(0.7), Inches(5.18), Inches(12), Inches(1.5),
            dict(size=12, color=DARK, bullet=True, space_after=3)),
           ("② 진짜 추론 보강 — 날짜혼재(22→89%)·당일시각(33→100%)은 SFT가 실제 추론을 가르침",
            dict(size=12, color=DARK, bullet=True))])
-footer(s, 16)
+footer(s, 17)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Slide 17 — 핵심 발견 ② + 위반 추이
+# Slide 18 — 핵심 발견 ② + 위반 추이
 # ═══════════════════════════════════════════════════════════════════════════
 s = content_slide("KEY FINDING ②", "DPO는 '능력 부재'를 해결하지 못한다")
 add_box(s, Inches(0.5), Inches(1.55), Inches(12.35), Inches(1.35), fill=RGBColor(0xFD,0xF3,0xE7), line=ORANGE, line_w=Pt(2))
@@ -524,10 +537,10 @@ add_text(s, Inches(0.5), Inches(5.1), Inches(12.3), Inches(1.8),
            dict(size=12.5, color=DARK, bullet=True, space_after=4)),
           ("해결책: 4–5단계 긴 체인 특화 SFT 데이터 3× 증량 (선호학습이 아닌 능력 보강)",
            dict(size=12.5, bold=True, color=GREEN, bullet=True))])
-footer(s, 17)
+footer(s, 18)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Slide 18 — 결론
+# Slide 19 — 결론
 # ═══════════════════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(BLANK)
 add_box(s, 0, 0, SW, SH, fill=NAVY)

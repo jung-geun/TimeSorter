@@ -368,19 +368,28 @@ Q2 보고서 우선을 기대하면 consistency 감점 요인이 되기도 — �
 | Qwen3.5-4B-Base | no adapter | 16.7% | 11% | 0% | 40% | 50% | 0% | 30 |
 | Qwen3.5-4B | **SFT v4** | **90.0%** | 89% | 100% | 100% | 100% | 67% | 30 |
 | Qwen3.5-4B | **DPO v5** | **90.0%** | 100% | 100% | 80% | 100% | 67% | 30 |
+| Qwen3.5-9B-Base | no adapter | 3.3% | 0% | 0% | 0% | 25% | 0% | 30 |
+| Qwen3.5-9B | no adapter | 0.0% | 0% | 0% | 0% | 0% | 0% | 30 |
+| Qwen3.5-9B | **SFT v4** | **93.3%** | 100% | 100% | 100% | 100% | 67% | 30 |
+| Qwen3.5-9B | **DPO v4** | **93.3%** | 100% | 100% | 100% | 100% | 67% | 30 |
 | **Qwen3.5-9B** (RTX 4090) | **SFT+DPO v4** | **88.7%** | 98% | 97% | 95% | 93% | 57% | 150 |
 
-> - n=150: held-out 150샘플 전체 평가 (Qwen3-4B, Qwen3.5-9B 체크포인트)
-> - n=30: 30샘플 빠른 평가 (Qwen3.5-4B 체크포인트)
-> - Qwen3.5-4B no adapter: thinking mode 출력 → JSON 파싱 전부 실패 (0.0%)
-> - Qwen3.5-4B-Base no adapter: RLHF 없어 형식 불완전하나 일부 통과 (16.7%)
-> - **Qwen3.5-9B**: RTX 4090 24GB 4-bit QLoRA 학습(SFT 11.5h+DPO 2.5h), docker `verify_chosen` 검증. 비-체인 93~98%로 안정적이나 체인 57%로 여전히 약점 — [상세](experiments/4090_1x_9b_v4/README.md)
+> - n=150: held-out 150샘플 전체 평가 (Qwen3-4B, Qwen3.5-9B 최종) / n=30: 빠른 평가 (Qwen3.5-4B·9B 4-way)
+> - Qwen3.5-4B/9B no adapter: thinking mode 출력 → JSON 파싱 전부 실패 (0.0%)
+> - Base no adapter: RLHF 없어 형식 불완전 (4B 16.7% / 9B 3.3%)
+> - **Qwen3.5-9B**: RTX 4090 24GB 4-bit QLoRA(SFT 11.5h+DPO 2.5h), docker `verify_chosen` 검증. 9B 추론은 RTX 3080 Ti 12GB 4-bit로도 적재 가능 — [상세](experiments/4090_1x_9b_v4/README.md)
+
+#### 9B 4-way — 포맷 vs 추론 (n=30)
+
+![9B 포맷 vs 추론](assets/chart_9b_schema_vs_content.png)
+
+> 9B도 4B와 **동일한 패턴**: no-adapter는 스키마 0%지만 내용 46.7%(포맷만 미준수), SFT가 93.3%로 고정. SFT=DPO 동일(체인 4/6 고착) — DPO가 체인을 못 옮김.
 
 #### 4B vs 9B — 모델 크기 효과
 
 ![4B vs 9B](assets/chart_4b_vs_9b.png)
 
-> 9B(2.3× 크기)는 리스크(80→95%) 등 약점 시나리오를 평준화하나 **의존성 체인은 4B 67% → 9B 57%로 오히려 낮음**(표본 크기 차이 감안). 체인은 모델 크기가 아닌 **SFT 데이터 보강**이 필요한 문제임을 재확인.
+> 9B(2.3× 크기)는 리스크(80→95%) 등 약점 시나리오를 평준화하나 **의존성 체인은 4B·9B 모두 57~67%로 미해결**(n=150 9B 체인 57%). 체인은 모델 크기가 아닌 **SFT 데이터 보강**이 필요한 문제임을 재확인.
 
 #### 핵심 교훈
 
