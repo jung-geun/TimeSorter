@@ -51,7 +51,14 @@ if __name__ == "__main__":
     parser.add_argument("--skeletons", required=True)
     parser.add_argument("--agent-out", required=True)
     parser.add_argument("--out", default="data/scheduler_v4_claude.parquet")
+    parser.add_argument("--source-prefix", default="v4_claude", help="source 태그 접두")
+    parser.add_argument("--keep-ids", default="", help="이 파일(줄당 id)에 있는 id만 수록 — 블라인드 감사 통과분 필터")
     args = parser.parse_args()
+
+    keep: set[str] | None = None
+    if args.keep_ids:
+        keep = {ln.strip() for ln in Path(args.keep_ids).read_text(encoding="utf-8").splitlines() if ln.strip()}
+        print(f"keep-ids 필터: {len(keep)}개 id만 수록")
 
     skels = {r["id"]: r for r in load_jsonl(args.skeletons)}
     outputs = load_jsonl(args.agent_out)
@@ -63,6 +70,9 @@ if __name__ == "__main__":
         sid = o.get("id")
         if sid not in skels or sid in seen:
             rejected["unknown_or_dup_id"] += 1
+            continue
+        if keep is not None and sid not in keep:
+            rejected["not_in_keep_ids"] += 1
             continue
         seen.add(sid)
         sk = skels[sid]
@@ -100,7 +110,7 @@ if __name__ == "__main__":
             "chosen": chosen_str,
             "persona": sk["persona_label"],
             "today": sk["today"],
-            "source": f"v4_claude_{skel.scenario}",
+            "source": f"{args.source_prefix}_{skel.scenario}",
             "meta": sk["meta"],
         })
 

@@ -41,6 +41,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=53)
     parser.add_argument("--slices", type=int, default=8)
     parser.add_argument("--out-prefix", default="outputs/skeletons_v4")
+    parser.add_argument("--id-prefix", default="v4c", help="행 id 접두 (예: v7chain)")
     args = parser.parse_args()
 
     plan: list[str] = []
@@ -72,7 +73,7 @@ if __name__ == "__main__":
                      "절대 날짜 간 상대 비교만 수행.\n" + facts)
 
         rows.append({
-            "id": f"v4c-{args.seed}-{i}",
+            "id": f"{args.id_prefix}-{args.seed}-{i}",
             "scenario": scenario,
             "today": skel.today,
             "today_display": today_h,

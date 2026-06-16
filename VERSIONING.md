@@ -38,6 +38,19 @@ TimeSorter 학습 데이터는 **SFT용·DPO용을 분리**하고, **버전별 �
 
 **향후**: v6 이후 새 데이터는 v7 증분으로 추가하거나, 다시 전체 검수해 v7 자립형으로 통합.
 
+## v7 — 의존성 체인 특화 증분 (SFT-only)
+
+v6의 유일한 약점인 의존성 체인을 타깃한 **SFT 증분**. DPO는 v6 그대로(체인은 DPO로 못 옮김).
+
+| 구분 | 행 수 | 구성 |
+|------|------|------|
+| SFT v7 증분 | **968** | `dependency_chain_complex` (페르소나별 4-5단계·다중 체인) |
+| SFT v7 자립형 | **15,282** | v6 14,314 + 체인 968 (`hf_versioned/sft/v7_selfcontained.parquet`) |
+| DPO v7 | 17,894 | = v6 무변경 |
+| 체인 held-out | 50 | `scheduler_v7_chain_eval.parquet` (seed 777, 학습 미사용) |
+
+**2단계 검수**: ① `verify_chosen` 결정론 검증(라벨↔골격) → ② **opus 블라인드 검수**(텍스트만으로 체인 복원 → 골격 대조, 50행/배치). 1,400 생성 → 968 수록(~70%). 생성은 Sonnet 4.6 위주(Haiku는 복잡 골격에서 품질 미달로 대부분 재생성). 상세: [docs/DATASETS.md](docs/DATASETS.md#v7).
+
 ## SFT 버전별 증분
 
 | 버전 | 행 수 | 제목 | 증분 목적 |

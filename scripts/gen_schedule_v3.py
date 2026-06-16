@@ -150,6 +150,27 @@ def build_skeleton(scenario: str, today: datetime.date, rng: random.Random) -> S
         specs.append(TaskSpec(0, "today", _dt(today, 0, rng.randint(9, 17))))
         specs.append(TaskSpec(0, "none"))
 
+    elif scenario == "dependency_chain_complex":
+        # 페르소나 기반 복잡 스케줄: 4-5단계 긴 체인(70-80%) 또는 2개 체인(20-30%)
+        # + 독립 태스크(당일/무마감/미래)를 섞어 체인 식별·연속 배치 난도를 높임.
+        n_chains = 2 if rng.random() < 0.25 else 1
+        for g in range(1, n_chains + 1):
+            steps = rng.randint(4, 5) if n_chains == 1 else rng.randint(3, 4)
+            off = rng.choice([0, 1, 1, 2])
+            end_hour = rng.randint(13, 19)
+            for pos in range(1, steps + 1):
+                specs.append(TaskSpec(
+                    0, "chain",
+                    _dt(today, off, end_hour) if pos == steps else None,
+                    chain_group=g, chain_pos=pos,
+                ))
+        # 독립 태스크 — 체인과 섞여 추출·분리 난도 부여
+        specs.append(TaskSpec(0, "today", _dt(today, 0, rng.randint(9, 17))))
+        if rng.random() < 0.6:
+            specs.append(TaskSpec(0, "none"))
+        if rng.random() < 0.4:
+            specs.append(TaskSpec(0, "future", _dt(today, rng.randint(2, 6), rng.randint(9, 18))))
+
     elif scenario == "risk":
         n = rng.randint(4, 5)
         risk_idx = rng.sample(range(n), k=rng.choice([1, 2]))
@@ -225,7 +246,15 @@ _TEXT_GEN_SYSTEM = """\
 - '상대 표현 사용' 지시가 있으면 절대 날짜 대신 반드시 그 표현을 사용 (예: "내일 오전까지")
 - 지난 일정이라도 텍스트에 '지났다', '어제' 같은 단서를 절대 쓰지 말 것 — 날짜만 그대로 표기
 - 리스크 문구가 지정된 태스크는 그 문구를 텍스트에 포함
-- 체인 태스크는 같은 업무의 연속 단계로 작성 (예: 보고서 작성 → 보고서 검토 반영 → 보고서 발송)
+- 체인 태스크는 같은 산출물의 연속 단계로 작성하되, 각 단계 텍스트만 읽어도 선후 관계가 드러나야 함:
+  같은 대상(예: "분기 보고서")을 공유하고, 각 단계는 이전 단계의 결과물을 입력으로 사용함이 명시되어야 함
+  (예: "분기 보고서 초안 작성" → "작성한 초안 팀장 검토 반영" → "검토 완료본 임원진 발송").
+  '체인 1/2단계' 같은 골격 표기는 텍스트에 절대 쓰지 말 것 — 업무 내용으로만 선후를 표현
+- 체인의 마지막 단계(마감 표기가 붙는 단계)도 반드시 그 체인의 산출물을 명시해야 함
+  (예: "완성한 분기 보고서 임원진 발송", "검증 마친 신고서 세무서 전자 신고").
+  "후속 조치 사항 최종 확인 완료", "최종 확인 완료", "마무리 처리" 같이 산출물이 없는
+  일반 문구는 절대 금지 — 텍스트만 읽고 어느 체인의 끝인지 알 수 없게 됨
+- 체인이 2개면 서로 다른 산출물·소재를 사용해 두 체인이 섞이지 않도록 명확히 구분
 - 페르소나의 직업·상황에 맞는 소재 사용, 태스크 간 소재 중복 금지
 - 출력: {"tasks": ["...", ...]} — 골격과 같은 개수·같은 순서"""
 
@@ -264,7 +293,8 @@ def _spec_to_fact(s: TaskSpec, today: str) -> str:
         return f"- 태스크 {s.idx}: 마감 없음"
     if s.kind == "chain":
         dl = f", 최종 마감 {s.deadline}" if s.deadline else ""
-        return f"- 태스크 {s.idx}: 연쇄 업무 {s.chain_pos}단계 (선행 완료 필요{dl})"
+        return (f"- 태스크 {s.idx}: 체인 {s.chain_group}의 {s.chain_pos}단계 "
+                f"(같은 체인끼리 단계 순서대로 연속 배치, 선행 단계 dependency≥4{dl})")
     state = ""
     if s.is_past:
         state = f" — 오늘({today}) 기준 이미 지남"

@@ -1,4 +1,4 @@
-# 데이터셋 구성 (v1 ~ v6)
+# 데이터셋 구성 (v1 ~ v7)
 
 > 버전별 증분·HuggingFace 사용법은 [VERSIONING.md](../VERSIONING.md) 참고.
 > - SFT 증분: [pieroot/timesorter-sft-ko](https://huggingface.co/datasets/pieroot/timesorter-sft-ko)
@@ -77,6 +77,26 @@ v2~v5 전체를 검수·통합한 단일 데이터셋. **v6 단독으로 학습 
 | DPO v6 | 17,894 | 검수 v2 15,321 + 큐레이션 v3/v5 2,573 |
 
 v2 구간은 opus 하위 에이전트 264개로 전수 검수·수정(SFT priority↔점수 1,188건, DPO 4,732건). drop 0(최대한 보존). 상세: [VERSIONING.md](../VERSIONING.md).
+
+## v7 — 의존성 체인 특화 보강 (페르소나별 복잡 스케줄)
+
+v6의 유일한 미해결 약점인 **의존성 체인(47~57%)** 을 타깃해, 페르소나별 4–5단계 긴 체인과 다중(최대 2개) 체인이 섞인 복잡 스케줄을 신규 시나리오 `dependency_chain_complex`로 대량 생성.
+
+| 파일 | 행 수 | 설명 |
+|------|------|------|
+| `scheduler_v7_chain.parquet` | **968** | 체인 특화 SFT 증분 (검수 통과분) |
+| `scheduler_v7_chain_eval.parquet` | 50 | 체인 전용 held-out 평가셋 (seed 777, 학습 미사용) |
+| `hf_versioned/sft/v7_selfcontained.parquet` | 15,282 | v6(14,314) + 체인(968) 자립형 |
+
+**DPO는 v6 그대로** — 체인은 선호 학습(DPO)으로 못 옮긴다는 실증(SFT=DPO 불변)에 따라 v7은 **SFT-only 증분**.
+
+**생성·검수 (2단계 게이트, 1,400 생성 → 968 수록, ~70%)**:
+1. **생성**: Claude Sonnet 4.6 + Haiku 4.5 하위 에이전트가 골격을 채움. Haiku는 복잡 골격에서 템플릿 반복·구조 무시가 잦아 대부분 Sonnet으로 재생성(품질 격차 실측).
+2. **결정론 검증** (`verify_chosen`): 체인 연속 배치·단계 순서·선행 dependency≥4 등 골격 규칙. 1,400→1,385 통과.
+3. **opus 블라인드 검수**: **텍스트만** 보고 체인을 복원하게 한 뒤 골격 정답과 대조. 텍스트만으로 체인·순서가 복원 안 되는 행("독심술 학습")을 제거 — 50행/배치 단위로 신뢰도 확보(94~98%, 100행 배치는 노이즈 커서 폐기).
+4. **dedup**: train 내부 중복 + train/eval 누출 제거. 전역 고유 태스크 92.5%.
+
+> 핵심 교훈: `verify_chosen`(라벨↔골격 정합)만으로는 "텍스트에 체인 신호가 없는데 라벨만 맞는" 행을 못 거른다. opus 블라인드 검수가 그 갭을 막는 핵심 게이트. 체인 개선 수치는 학습 후 v6모델 vs v7모델을 이 held-out 50으로 비교해야 확정.
 
 ---
 
