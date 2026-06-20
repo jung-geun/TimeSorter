@@ -14,6 +14,7 @@ logs/
 # HF 원본 대용량 다운로드 (download_datasets.py / download_nemotron.py로 재생성)
 data/ko_Ultrafeedback_binarized.parquet
 data/nemotron_personas_korea.parquet
+data/nemotron_personas_*.parquet
 data/orca-dpo-pairs-ko.parquet
 
 # 생성 체크포인트 및 API 캐시 (재실행 시 자동 생성)

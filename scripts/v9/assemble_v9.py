@@ -28,15 +28,22 @@ from timesorter.data import schema_v9 as S  # noqa: E402
 import re
 
 # 막연·일반(placeholder) 제목 — 이런 제목이 있으면 행 탈락(다양성/품질)
-_GENERIC = re.compile(r"^(작업\s*진행|일반\s*업무|할\s*일\s*처리|업무\s*관련|기타\s*업무|업무\s*처리)")
+_GENERIC_KO = re.compile(r"^(작업\s*진행|일반\s*업무|할\s*일\s*처리|업무\s*관련|기타\s*업무|업무\s*처리)")
+
+
+def _generic_pattern(lang: str):
+    if lang == "en":
+        from content_en import GENERIC_TITLE
+        return re.compile(GENERIC_TITLE, re.IGNORECASE)
+    return _GENERIC_KO
 
 
 def _norm_title(t: str) -> str:
-    return re.sub(r"\s+", "", t)
+    return re.sub(r"\s+", "", t).lower()
 
 
-def has_generic_title(titles: dict) -> bool:
-    return any(_GENERIC.match(t.get("title", "").strip()) for t in titles.values())
+def has_generic_title(titles: dict, pat) -> bool:
+    return any(pat.match(t.get("title", "").strip()) for t in titles.values())
 
 
 def load_scaffold(scaffold_dir: str = "outputs/v9/build/scaffold") -> dict[int, dict]:
@@ -96,11 +103,15 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--llm", required=True)
     ap.add_argument("--min-realism", type=int, default=3)
+    ap.add_argument("--lang", default="ko", choices=["ko", "en"])
     ap.add_argument("--scaffold-dir", default="outputs/v9/build/scaffold")
     ap.add_argument("--out-sft", default="data/scheduler_v9.parquet")
     ap.add_argument("--out-hf", default="data/hf_versioned/sft/v9.parquet")
     args = ap.parse_args()
 
+    pat = _generic_pattern(args.lang)
+    version = "v9_en" if args.lang == "en" else "v9"
+    src_tag = "v9en" if args.lang == "en" else "v9"
     scaffold = load_scaffold(args.scaffold_dir)
     titles, reasons, opus = load_llm(args.llm)
 
@@ -112,7 +123,7 @@ def main() -> None:
         if rid not in titles or rid not in reasons:
             stats["no_llm"] += 1
             continue
-        if has_generic_title(titles[rid]):
+        if has_generic_title(titles[rid], pat):
             stats["generic"] += 1
             continue
         try:
@@ -142,11 +153,11 @@ def main() -> None:
             "chosen": S.format_for_sft_v9(out),
             "persona": json.dumps(inp.user_persona.model_dump(), ensure_ascii=False),
             "today": scaf["current_time"][:10],
-            "source": f"v9_{scaf['occ_category']}",
+            "source": f"{src_tag}_{scaf['occ_category']}",
             "meta": json.dumps({"occ_category": scaf["occ_category"],
                                 "chain_pairs": scaf["chain_pairs"],
                                 "n_tasks": len(scaf["slots"])}, ensure_ascii=False),
-            "version": "v9",
+            "version": version,
         })
 
     df = pd.DataFrame(rows)
