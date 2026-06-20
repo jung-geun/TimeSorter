@@ -86,7 +86,7 @@ v1~v8의 자연어/4축(1–5) 스키마를 **JSON-in / JSON-out**으로 전면 
 
 **규칙**: `priority_rank`는 total_score 내림차순(단, **체인 선행이 후행보다 먼저**, 지난 고정 일정은 최하위) · 시간블록은 `current_time` 이후·가용시간 내·서로 겹치지 않게·가능하면 각 task의 `deadline` 전에 완료.
 
-> 데이터셋: HF 비공개 [pieroot/timesorter-scheduler-v9-ko](https://huggingface.co/datasets/pieroot/timesorter-scheduler-v9-ko) (SFT 1,542 / DPO 7,438). 구성·생성·검수 상세는 [docs/DATASETS.md](docs/DATASETS.md). **다국어 확장**(EN-US 등 Nemotron 국가별 페르소나 기반) 진행 중.
+> 데이터셋: HF 공개 [pieroot/timesorter-scheduler-v9-ko](https://huggingface.co/datasets/pieroot/timesorter-scheduler-v9-ko) (SFT 1,542 / DPO 7,438). 구성·생성·검수 상세는 [docs/DATASETS.md](docs/DATASETS.md). **다국어 확장**(EN-US 등 Nemotron 국가별 페르소나 기반) 진행 중.
 
 ---
 

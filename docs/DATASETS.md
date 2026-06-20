@@ -113,7 +113,7 @@ v7에 이어 `dependency_chain_complex`를 추가 보강. v7과 동일 파이프
 
 ## v9 — JSON-in / JSON-out 신 스키마 전면 개편 (앱 연동)
 
-> **스키마 전면 교체.** v1~v8은 자연어/4축(1-5 정수) 스키마의 누적 증분이었지만, v9는 앱이 그대로 파싱·렌더링하는 **구조화 JSON 입출력**으로 재설계한 독립 신셋이다. 별도 HF 레포 [pieroot/timesorter-scheduler-v9-ko](https://huggingface.co/datasets/pieroot/timesorter-scheduler-v9-ko)(비공개).
+> **스키마 전면 교체.** v1~v8은 자연어/4축(1-5 정수) 스키마의 누적 증분이었지만, v9는 앱이 그대로 파싱·렌더링하는 **구조화 JSON 입출력**으로 재설계한 독립 신셋이다. 별도 HF 레포 [pieroot/timesorter-scheduler-v9-ko](https://huggingface.co/datasets/pieroot/timesorter-scheduler-v9-ko)(공개).
 
 **목적**: "오늘 할 일"(JSON)을 입력하면 페르소나·마감·의존관계를 고려해 (1) 실행 순서(`priority_rank`), (2) 설명가능한 4축 0-10 점수, (3) 충돌 없는 추천 시간블록을 한 번에 산출. 모델 출력을 앱이 바로 캘린더에 렌더링하는 것이 목표.
 
