@@ -1,0 +1,33 @@
+# SFT v8 (Qwen3.5-4B) — v8 자립형 (15,703행 = v7 15,282 + 체인 보강 421)
+# v7 대비 의존성 체인 421행 추가 (Sonnet/Haiku 생성 + Opus 블라인드 감사)
+model_name: Qwen/Qwen3.5-4B
+dataset: data/hf_versioned/sft/v8_selfcontained.parquet
+output_dir: outputs/sft_q35_4b_v8
+max_samples: null
+ko_ultrafeedback_n: 0
+max_seq_length: 1536
+schema_version: "v3"
+prompt_completion: true
+wandb_run_name: sft_q35_4b_v8
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  num_train_epochs: 3
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  packing: false
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

@@ -33,3 +33,21 @@ outputs/
 # v6 버저닝 생성 산출물 (HF 업로드본 — build_versioned_datasets.py / v6_*.py 로 재생성)
 data/hf_versioned/
 data/v6_audit/
+
+# 워크플로 에이전트 부산물 (루트 스크래치 — 커밋 금지, 앵커 /로 scripts/ 보호)
+/batch_*.json
+/task_*.json
+/structured_output.json
+/output_batch_*.jsonl
+/.audit_batch_*.json
+/gen_batch_*.py
+/gen_tasks.py
+/generate_tasks.py
+
+# v9 중간 산출물 (canonical: data/scheduler_v9.parquet · data/dpo_pairs_v9*.parquet 만 유지)
+data/scheduler_v9.parquet.prefull
+data/scheduler_v9_le4096.parquet
+data/scheduler_v9_topup.parquet
+data/scheduler_v9_train3072.parquet
+data/scheduler_v9_train4096.parquet
+data/v9/

@@ -1,4 +1,4 @@
-# 데이터셋 구성 (v1 ~ v7)
+# 데이터셋 구성 (v1 ~ v9)
 
 > 버전별 증분·HuggingFace 사용법은 [VERSIONING.md](../VERSIONING.md) 참고.
 > - SFT 증분: [pieroot/timesorter-sft-ko](https://huggingface.co/datasets/pieroot/timesorter-sft-ko)
@@ -97,6 +97,55 @@ v6의 유일한 미해결 약점인 **의존성 체인(47~57%)** 을 타깃해, 
 4. **dedup**: train 내부 중복 + train/eval 누출 제거. 전역 고유 태스크 92.5%.
 
 > 핵심 교훈: `verify_chosen`(라벨↔골격 정합)만으로는 "텍스트에 체인 신호가 없는데 라벨만 맞는" 행을 못 거른다. opus 블라인드 검수가 그 갭을 막는 핵심 게이트. 체인 개선 수치는 학습 후 v6모델 vs v7모델을 이 held-out 50으로 비교해야 확정.
+
+## v8 — 의존성 체인 추가 보강 (SFT 증분 + 체인 DPO)
+
+v7에 이어 `dependency_chain_complex`를 추가 보강. v7과 동일 파이프라인(골격→Sonnet/Haiku 생성→`verify_chosen`→Opus 검수)에 태스크 집합 중복 제거(v7 대비 dedup).
+
+| 파일 | 행 수 | 설명 |
+|------|------|------|
+| `scheduler_v8_chain.parquet` | 421 | 체인 특화 SFT 증분 (검수 통과분) |
+| `dpo_pairs_v8_chain.parquet` | 1,231쌍 | 체인 전용 hard-negative 3종 |
+
+**DPO 카테고리:** dependency_scatter(421) · chain_internal_swap(421) · chain_break_mid(389). v7이 SFT-only였던 것과 달리 v8은 체인 약점을 **DPO로도** 타깃(`reject_category` 기반 위반유형 분류).
+
+---
+
+## v9 — JSON-in / JSON-out 신 스키마 전면 개편 (앱 연동)
+
+> **스키마 전면 교체.** v1~v8은 자연어/4축(1-5 정수) 스키마의 누적 증분이었지만, v9는 앱이 그대로 파싱·렌더링하는 **구조화 JSON 입출력**으로 재설계한 독립 신셋이다. 별도 HF 레포 [pieroot/timesorter-scheduler-v9-ko](https://huggingface.co/datasets/pieroot/timesorter-scheduler-v9-ko)(비공개).
+
+**목적**: "오늘 할 일"(JSON)을 입력하면 페르소나·마감·의존관계를 고려해 (1) 실행 순서(`priority_rank`), (2) 설명가능한 4축 0-10 점수, (3) 충돌 없는 추천 시간블록을 한 번에 산출. 모델 출력을 앱이 바로 캘린더에 렌더링하는 것이 목표.
+
+| config | 행 수 | 컬럼 |
+|--------|------|------|
+| `sft` | **1,542** | prompt(입력 JSON) / chosen(출력 JSON) / persona / today / source / meta |
+| `dpo` | **7,438** | prompt / chosen / rejected / category / persona / today / source |
+
+### 입출력 스키마
+- **입력**: `current_time` + `user_persona`(occupations·detailed_status·age·gender·location·bio·availability) + `tasks[]`(task_id·title·memo·source·deadline·estimated_duration_minutes)
+- **출력**: `scheduled_tasks[]` = priority_rank + scoring(deadline_proximity·task_importance·task_chaining·urgency·total_score, **모두 0-10**) + reasoning(summary·chaining_detail) + recommended_schedule(start_time·end_time)
+- **total_score** = `0.30·urgency + 0.25·deadline_proximity + 0.30·task_importance + 0.15·task_chaining` (평가 시 4축에서 재계산 — 모델은 4축만 정확하면 됨)
+
+### 생성 파이프라인
+1. **페르소나**: Nvidia Nemotron-Personas-Korea → 12개 직업군 균등 48명(이름 제거, 활성/구직 분리, 직업군별 도메인·work_ratio)
+2. **결정적 골격**: 시나리오별 날짜·마감·체인·소요시간 슬롯. micro-topic 110종·chain-subject 80종 순환 배정으로 다양화. **마감 = 스케줄 종료 + 버퍼**라 항상 실현 가능
+3. **하위 에이전트**: Haiku=태스크 제목/메모, Sonnet=reasoning(주입된 사실 기반), Opus=검수
+4. **결정적 채점/스케줄**: 4축 0-10 산출 → total_score → priority_rank 정렬 → 그리디 시간블록(가용시간 내, 의존순, 중복 없이)
+
+### 검수 (2단계 게이트)
+1. `verify_chosen_v9`: rank 순열·시간블록 중복·소요 일치·마감 실현·total 재계산·체인 선후 — 무비용 결정적 게이트
+2. **sonnet/opus 전수 검수**: 현실성·페르소나 적합성·점수↔순위↔스케줄↔근거 정합. 1차 1,752행 **62% 통과** → 생성기 결함 수정(현장직 사무체인 차단·risk 사무직군 한정·체인 task_id 단계순 연속) → 보충 재생성 **76% 통과** → 정제본 1,072 + 보충 470 = **1,542행**
+
+### DPO hard-negative (5종)
+chosen에서 규칙 1곳만 위반: `schedule_overlap`(블록 겹침)·`deadline_miss`(마감 후 배치)·`rank_score_mismatch`(점수↔순위 역전)·`total_score_wrong`(가중합 불일치)·`chain_order_break`(체인 선후 뒤바뀜). chosen 100% 검증 통과, 동일쌍 0, 차이는 위반 1축뿐(전수 확인).
+
+> **실제 DPO 학습 = 약점 집중 서브셋** `dpo_pairs_v9_focus.parquet`(**2,812쌍** = chain_order_break + rank_score_mismatch). SFT가 schedule_feasible·deadline_met을 이미 100% 달성해, 남은 약점인 **체인 순서·순위**만 타깃. (`category` 필터로 `dpo_pairs_v9.parquet`에서 재생성 가능.)
+
+### 품질·특이사항
+- 태스크 제목 고유율 **98.7%**, 12 직업군 균일(105-142행/군)
+- **Qwen3.5 thinking 템플릿 주의**: 기본 chat 템플릿이 프롬프트 끝에 열린 `<think>`를 붙여 추론 모드로 빠짐 → `enable_thinking=False`(닫힌 `<think></think>`)로 직접 JSON 출력 학습
+- 긴 출력(full p90 ~4,059 tok)이라 12GB GPU에선 liger fused-linear-CE로 logits 미생성 학습 (SFT/DPO 공통)
 
 ---
 

@@ -101,6 +101,10 @@ def render_system_prompt(tmpl: str, persona: str, today: str = "") -> str:
 
 def system_prompt_for(schema_version: str) -> str:
     """schema_version → system prompt 템플릿."""
+    if schema_version == "v9":
+        # v9는 JSON-in/out 신 스키마 — persona가 입력 JSON에 포함되어 placeholder 없음.
+        from .schema_v9 import SCHEDULER_SYSTEM_PROMPT_V9
+        return SCHEDULER_SYSTEM_PROMPT_V9
     return {
         "v1": SCHEDULER_SYSTEM_PROMPT_V1,
         "v2": SCHEDULER_SYSTEM_PROMPT_V2,
@@ -191,7 +195,18 @@ def parse_lenient(text: str) -> ScheduleResponse | None:
     try:
         return parse_strict(candidate)
     except Exception:
-        return None
+        pass
+
+    # tasks가 문자열 배열인 경우 TaskItem 객체 배열로 변환 후 재시도
+    try:
+        obj = json.loads(candidate)
+        if isinstance(obj.get("tasks"), list) and obj["tasks"] and isinstance(obj["tasks"][0], str):
+            obj["tasks"] = [{"id": i + 1, "text": t} for i, t in enumerate(obj["tasks"])]
+            return ScheduleResponse.model_validate(obj)
+    except Exception:
+        pass
+
+    return None
 
 
 def parse_or_repair(text: str) -> ScheduleResponse:
