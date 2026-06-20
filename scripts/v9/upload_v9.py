@@ -57,31 +57,69 @@ configs:
   chosen 100% 검증 통과, 차이는 위반 1축뿐. **실제 학습은 약점(체인 순서)에 집중한 서브셋
   2,812쌍**(chain_order_break + rank_score_mismatch)을 사용 — schedule/deadline은 SFT가 이미 100%.
 
-## 입력 스키마
+## 입력 스키마 `ScheduleInput`
 ```json
 {{
   "current_time": "2026-03-21T08:00:00+09:00",
-  "user_persona": {{"occupations": ["..."], "detailed_status": "...", "age": 0,
-                    "gender": "male|female", "location": {{"country": "...", "city": "..."}},
+  "user_persona": {{"occupations": ["마케팅 매니저"], "detailed_status": "...", "age": 34,
+                    "gender": "male|female", "location": {{"country": "South Korea", "city": "서울 강남구"}},
                     "bio": "...", "availability": "09:00-18:00"}},
-  "tasks": [{{"task_id": "task_001", "title": "...", "memo": "...", "source": "...",
-              "deadline": "ISO8601|null", "estimated_duration_minutes": 60}}]
+  "tasks": [{{"task_id": "task_001", "title": "분기 실적 보고서 작성", "memo": "미제출 시 위약금",
+              "source": "email", "deadline": "2026-03-21T15:00:00+09:00",
+              "estimated_duration_minutes": 90}}]
 }}
 ```
 
-## 출력 스키마
+**필드 의미** — 모델이 스케줄을 짜기 위해 받는 컨텍스트:
+
+| 필드 | 타입 | 의미 |
+|------|------|------|
+| `current_time` | str (ISO8601+오프셋) | 스케줄링 기준 "지금" 시각. **모든 마감 임박도·시간블록 배치의 기준점**. 타임존 오프셋 포함(KR=+09:00) |
+| `user_persona.occupations` | list[str] | 직업(들). **빈 리스트=무직/구직** → 업무 태스크 대신 생활·구직 과제. 태스크 적합성 판단 |
+| `user_persona.detailed_status` | str | 현재 상황·목표 요약(직업적 맥락) — 점수·근거의 배경 |
+| `user_persona.age` / `gender` | int / "male"·"female" | 연령·성별 |
+| `user_persona.location` | obj | `country`·`city` — 지역 맥락 |
+| `user_persona.bio` | str | 성향·생활 패턴(취미·습관) — 어떤 일이 자연스러운지 |
+| `user_persona.availability` | str `"HH:MM-HH:MM"` | **하루 가용 시간대**. 추천 시간블록은 반드시 이 창 안에만 배치 |
+| `tasks[].task_id` | str | 고유 식별자. **출력에서 그대로 참조**(누락·추가 금지) |
+| `tasks[].title` | str | 할 일 제목 |
+| `tasks[].memo` | str | 부가 맥락(없으면 `""`). 리스크 문구(위약금·법정기한 등) 포함 가능 |
+| `tasks[].source` | str | 유입 출처: email·slack_message·calendar·memo_app·phone_call·sms·kakao·app_push |
+| `tasks[].deadline` | str(ISO8601) \| null | 마감 시각. **`null`=마감 없음** |
+| `tasks[].estimated_duration_minutes` | int | 예상 소요 시간(분). **추천 시간블록의 길이** |
+
+## 출력 스키마 `ScheduleResponseV9`
 ```json
 {{
   "scheduled_tasks": [{{
-    "task_id": "task_001", "title": "...", "priority_rank": 1,
-    "scoring": {{"deadline_proximity": 0-10, "task_importance": 0-10,
-                "task_chaining": 0-10, "urgency": 0-10, "total_score": 0-10}},
-    "reasoning": {{"summary": "...", "chaining_detail": "<체인일 때만>"}},
-    "recommended_schedule": {{"start_time": "ISO8601", "end_time": "ISO8601"}}
+    "task_id": "task_001", "title": "분기 실적 보고서 작성", "priority_rank": 1,
+    "scoring": {{"deadline_proximity": 9.0, "task_importance": 9.0,
+                "task_chaining": 2.0, "urgency": 9.5, "total_score": 8.1}},
+    "reasoning": {{"summary": "마감 7시간 전·위약금 리스크로 최우선...", "chaining_detail": ""}},
+    "recommended_schedule": {{"start_time": "2026-03-21T08:00:00+09:00",
+                             "end_time": "2026-03-21T09:30:00+09:00"}}
   }}]
 }}
 ```
-`total_score = 0.30·urgency + 0.25·deadline_proximity + 0.30·task_importance + 0.15·task_chaining`
+
+**필드 의미** — `scheduled_tasks[]`는 **입력 task 전부**를 우선순위 순으로 담는다(커버리지 보장):
+
+| 필드 | 타입 | 의미 |
+|------|------|------|
+| `task_id` / `title` | str | 입력에서 그대로(누락·추가·변형 금지) |
+| `priority_rank` | int | **실행 순서**. 1..N 순열, 1=가장 먼저 |
+| `scoring.deadline_proximity` | 0–10 | **마감 임박도**. current_time 기준 마감이 가까울수록 ↑ (마감 없음=0) |
+| `scoring.urgency` | 0–10 | **지금 당장 착수해야 하는 정도**. 여유(slack) 적을수록·불이익(에스컬레이션/위약금/법정기한) 있을수록 ↑ |
+| `scoring.task_importance` | 0–10 | **사용자 목표에 미치는 영향**. 리스크 문구 있으면 9–10으로 상향 |
+| `scoring.task_chaining` | 0–10 | **후속 작업 블로킹 정도**. 다른 작업의 선행이면 ↑ (비최종 체인=9 · 최종 체인=6 · 독립=2) |
+| `scoring.total_score` | 0–10 | 4축 **가중 종합**(아래 공식). priority_rank 정렬 기준 |
+| `reasoning.summary` | str | 이 점수·순위·시간블록인 **근거 1–2문장**(facts 수치 인용, 날조 금지) |
+| `reasoning.chaining_detail` | str | 체인 소속 시 **선행/후행 의존관계** 명시. **독립이면 `""`**(빈 문자열) |
+| `recommended_schedule.start_time` / `end_time` | str(ISO8601) | **추천 시간블록**. 길이=estimated_duration_minutes, 가용시간 내, 블록 간 비중복, 가능하면 마감 전 완료 |
+
+**total_score 공식** = `0.30·urgency + 0.25·deadline_proximity + 0.30·task_importance + 0.15·task_chaining` (소수 2자리). 평가 시 4축에서 결정적 재계산 — 모델은 **4축만 정확하면** total은 코드로 산출.
+
+**priority_rank 규칙**: total_score 내림차순이 기본, 단 (1) **체인 선행이 후행보다 먼저**, (2) 이미 지난 고정 일정은 최하위.
 
 ## 생성 방법
 1. Nvidia Nemotron-Personas-Korea → 12개 직업군 균등 48 페르소나(이름 제거, 활성/구직 분리)
