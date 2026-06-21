@@ -455,4 +455,21 @@ def verify_chosen_v9(inp: ScheduleInput, out: ScheduleResponseV9,
         if a in rank_map and b in rank_map and rank_map[a] >= rank_map[b]:
             errors.append(f"체인 순서 위반: 선행 {a}(rank {rank_map[a]}) ≥ 후행 {b}(rank {rank_map[b]})")
 
+    # 8) 스케줄 시작 시각이 priority_rank 순서를 따름 (논리 일관성: 선순위가 더 일찍 시작).
+    #    gold는 우선순위 순 그리디 배치라 항상 충족 — "rank 1인데 더 늦게 배치" 류 모순 검출.
+    sched_map: dict[str, _dt.datetime] = {}
+    for s in out.scheduled_tasks:
+        try:
+            sched_map[s.task_id] = parse_dt(s.recommended_schedule.start_time)
+        except Exception:
+            pass
+    by_rank = sorted((s for s in out.scheduled_tasks if s.task_id in sched_map),
+                     key=lambda s: s.priority_rank)
+    for prev, cur in zip(by_rank, by_rank[1:]):
+        if sched_map[cur.task_id] < sched_map[prev.task_id] - _dt.timedelta(minutes=1):
+            errors.append(
+                f"스케줄 순서 위반: {cur.task_id}(rank {cur.priority_rank})가 "
+                f"{prev.task_id}(rank {prev.priority_rank})보다 일찍 시작")
+            break
+
     return errors
