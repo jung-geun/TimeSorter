@@ -35,8 +35,8 @@ from timesorter.device import detect  # noqa: E402
 from timesorter.model import load_model_and_tokenizer  # noqa: E402
 
 
-def _prompt_str(tok, input_json: str) -> str:
-    msgs = [{"role": "system", "content": system_prompt_for("v9")},
+def _prompt_str(tok, input_json: str, schema: str = "v9") -> str:
+    msgs = [{"role": "system", "content": system_prompt_for(schema)},
             {"role": "user", "content": input_json}]
     return tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False,
                                    enable_thinking=False)
@@ -81,6 +81,7 @@ def main() -> None:
     ap.add_argument("--batch", type=int, default=4)
     ap.add_argument("--seed", type=int, default=13)
     ap.add_argument("--data", default="data/scheduler_v9.parquet")
+    ap.add_argument("--schema", default="v9", help="시스템 프롬프트 버전 (EN-US: v9_en)")
     ap.add_argument("--max-new", type=int, default=2048)
     ap.add_argument("--out", default="outputs/v9/eval_result.json")
     args = ap.parse_args()
@@ -102,7 +103,7 @@ def main() -> None:
     # 프롬프트가 너무 길지 않은 행 우선(생성 여유) — n개 수집
     rows = []
     for _, r in df.iterrows():
-        ps = _prompt_str(tok, str(r["prompt"]))
+        ps = _prompt_str(tok, str(r["prompt"]), schema=args.schema)
         if len(tok(ps, add_special_tokens=False)["input_ids"]) <= 1900:
             rows.append((r, ps))
         if len(rows) >= args.n:

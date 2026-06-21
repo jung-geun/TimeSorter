@@ -82,18 +82,19 @@ class MemEfficientSFTTrainer(SFTTrainer):
         return (loss, dec_out) if return_outputs else loss
 
 
-def build_v9_dataset(parquet: str, tokenizer, max_seq: int):
+def build_v9_dataset(parquet: str, tokenizer, max_seq: int, schema_version: str = "v9"):
     """v9 텍스트 prompt-completion 데이터셋 빌드.
 
     **enable_thinking=False**로 닫힌 think 블록(`<think>\\n\\n</think>`) 사용 — Qwen3.5가
     추론 모드로 들어가 사고 텍스트를 내는 문제 방지(직접 JSON 출력 학습).
     프롬프트를 미리 문자열로 렌더 → trl이 템플릿 재적용 안 함(마스킹 정합).
+    schema_version="v9_en"이면 영어 시스템 프롬프트 사용(다국어).
     """
     import pandas as pd
     from datasets import Dataset
     from timesorter.data.schema import system_prompt_for
     df = pd.read_parquet(parquet).reset_index(drop=True)
-    sysp = system_prompt_for("v9")
+    sysp = system_prompt_for(schema_version)
     rows, kept = [], 0
     for _, r in df.iterrows():
         msgs = [{"role": "system", "content": sysp},
@@ -129,7 +130,8 @@ def main(config_path: str) -> None:
         sft_adapter_path=cfg.sft_adapter,
     )
 
-    ds = build_v9_dataset(cfg.dataset, tokenizer, cfg.max_seq_length)
+    ds = build_v9_dataset(cfg.dataset, tokenizer, cfg.max_seq_length,
+                          schema_version=getattr(cfg, "schema_version", "v9") or "v9")
     if cfg.max_samples:
         ds = ds.select(range(min(cfg.max_samples, len(ds))))
     print(f"[data] {len(ds)}개 샘플")

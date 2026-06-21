@@ -105,6 +105,10 @@ def system_prompt_for(schema_version: str) -> str:
         # v9는 JSON-in/out 신 스키마 — persona가 입력 JSON에 포함되어 placeholder 없음.
         from .schema_v9 import SCHEDULER_SYSTEM_PROMPT_V9
         return SCHEDULER_SYSTEM_PROMPT_V9
+    if schema_version == "v9_en":
+        # v9 EN-US — 영어 시스템 프롬프트(다국어 확장).
+        from .schema_v9 import SCHEDULER_SYSTEM_PROMPT_V9_EN
+        return SCHEDULER_SYSTEM_PROMPT_V9_EN
     return {
         "v1": SCHEDULER_SYSTEM_PROMPT_V1,
         "v2": SCHEDULER_SYSTEM_PROMPT_V2,
