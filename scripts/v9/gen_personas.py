@@ -101,12 +101,24 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=44, help="페르소나 수 (12 직업군 균등)")
     ap.add_argument("--seed", type=int, default=9)
+    ap.add_argument("--out", default=str(OUT), help="출력 경로")
+    ap.add_argument("--exclude", default="", help="제외할 uuid가 든 personas json(쉼표 구분) — held-out용")
     args = ap.parse_args()
 
     df = pd.read_parquet(NEMOTRON, columns=[
         "uuid", "persona", "professional_persona", "career_goals_and_ambitions",
         "sex", "age", "occupation", "district", "marital_status", "education_level"])
     df = df[df["age"].between(19, 75)].copy()
+    excl = set()
+    for p in [x for x in args.exclude.split(",") if x.strip()]:
+        for c in json.loads(Path(p).read_text()):
+            u = c.get("_meta", {}).get("uuid")
+            if u:
+                excl.add(u)
+    if excl:
+        before = len(df)
+        df = df[~df["uuid"].isin(excl)].copy()
+        print(f"[held-out] 제외 uuid {len(excl)}개 → {before}→{len(df)}행")
 
     # 직업→직업군 매핑 (고유 직업 2,120개만 분류 → 빠름)
     occ2cat = {o: categorize(o) for o in df["occupation"].dropna().unique()}
@@ -146,9 +158,10 @@ def main() -> None:
         c["_meta"]["category"] = cat
         cards.append(c)
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(cards, ensure_ascii=False, indent=2))
-    print(f"[saved] {OUT} — {len(cards)} personas (목표 {args.n})")
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(cards, ensure_ascii=False, indent=2))
+    print(f"[saved] {out_path} — {len(cards)} personas (목표 {args.n})")
     from collections import Counter
     catc = Counter(c["_meta"]["category"] for c in cards)
     print("직업군 분포:", dict(catc))

@@ -21,14 +21,26 @@ load_dotenv()
 REPO = "pieroot/timesorter-scheduler-v9-ko"
 SFT = Path("data/hf_versioned/sft/v9.parquet")
 DPO = Path("data/hf_versioned/dpo/v9.parquet")
+EVAL = Path("data/hf_versioned/eval/v9.parquet")
 
 
-def card(n_sft: int, n_dpo: int) -> str:
-    front = """---
-language: [ko]
+def card(n_sft: int, n_dpo: int, n_eval: int = 0) -> str:
+    eval_cfg = ("- config_name: eval\n  data_files:\n  - split: test\n    path: data/eval.parquet\n"
+                if n_eval else "")
+    lang = "[ko, en]" if n_eval else "[ko]"
+    eval_sec = (f"""
+## 평가셋 (`eval` config, {n_eval:,}행 · KR+EN · held-out)
+학습에 쓰지 않은 별도 held-out 평가셋. 학습 페르소나와 **uuid가 겹치지 않는** 신규 페르소나 + 미사용 seed로
+생성하고, 난도 상위(태스크 ~10개·다중 체인·tight 마감)만 선별. **논리 일관성 검증**(`verify_chosen_v9`:
+rank 순열·블록 중복·소요 일치·마감 실현·total 재계산·체인 선후·**스케줄 순서↔rank**) + opus 엄격 감사를
+통과한 행만 수록 — 논리 오류가 있으면 통과 불가. `lang` 컬럼(ko/en), `meta`에 난도 특성(n_tasks/n_chains/
+has_risk 등) 태깅. **모델 평가 1차 지표 = 출력의 verify 무위반율**(gold 일치는 보조 진단).
+""" if n_eval else "")
+    front = f"""---
+language: {lang}
 license: apache-2.0
 task_categories: [text-generation]
-tags: [scheduling, prioritization, korean, json, agent, timesorter, v9]
+tags: [scheduling, prioritization, korean, english, json, agent, timesorter, v9]
 configs:
 - config_name: sft
   default: true
@@ -39,7 +51,7 @@ configs:
   data_files:
   - split: train
     path: data/dpo.parquet
----
+{eval_cfg}---
 """
     body = f"""
 # TimeSorter v9 — 한국어 일정 스케줄링 (JSON-in / JSON-out)
@@ -157,7 +169,7 @@ am_escalation(오전 마감 에스컬레이션) 등. micro-topic 110종 · chain
 - **SFT가 1차 효과**(규칙·점수 급상승), **DPO ≈ SFT**(선호학습으로 체인 능력은 안 옮겨짐 — 4B·2B 공통).
 - **2B는 형식부터 학습**(parse 0.20→0.92), 4B base는 이미 형식을 알아 SFT가 규칙·점수를 끌어올림.
 - 2B 천장 < 4B(verify_pass 0.09 vs 0.47) — 규칙 동시충족은 모델 용량 의존.
-
+{eval_sec}
 ## 품질
 - 태스크 제목 고유율 ~98.7% (과적합 방지), 12 직업군 균일도 ~1.0 (105-142행/군)
 - `total_score`는 평가 시 4축에서 공식으로 재계산(recompute) — 모델은 4축만 정확하면 됨
@@ -177,6 +189,7 @@ def main() -> None:
     api = HfApi(token=token)
     n_sft = len(pd.read_parquet(SFT))
     n_dpo = len(pd.read_parquet(DPO))
+    n_eval = len(pd.read_parquet(EVAL)) if EVAL.exists() else 0
     api.create_repo(REPO, repo_type="dataset", private=args.private, exist_ok=True)
     if not args.card_only:
         api.upload_file(path_or_fileobj=str(SFT), path_in_repo="data/sft.parquet",
@@ -185,7 +198,11 @@ def main() -> None:
         api.upload_file(path_or_fileobj=str(DPO), path_in_repo="data/dpo.parquet",
                         repo_id=REPO, repo_type="dataset")
         print(f"  [업로드] {REPO} :: data/dpo.parquet ({n_dpo:,}쌍)")
-    api.upload_file(path_or_fileobj=card(n_sft, n_dpo).encode(), path_in_repo="README.md",
+        if n_eval:
+            api.upload_file(path_or_fileobj=str(EVAL), path_in_repo="data/eval.parquet",
+                            repo_id=REPO, repo_type="dataset")
+            print(f"  [업로드] {REPO} :: data/eval.parquet ({n_eval:,}행)")
+    api.upload_file(path_or_fileobj=card(n_sft, n_dpo, n_eval).encode(), path_in_repo="README.md",
                     repo_id=REPO, repo_type="dataset")
     print(f"  [카드] https://huggingface.co/datasets/{REPO}")
 
