@@ -6,15 +6,22 @@
 
 ---
 
-## v9 종합 학습셋 (v9combined) — 평가셋 59행 (KR 31 + EN 28)
+## v9 종합 학습셋 (v9combined) — 평가셋 n=50 (59행 중 입력 ≤1900 토큰 통과)
+
+> 평가셋: `data/scheduler_v9_eval.parquet` (KR 31 + EN 28 = 59행, 9행 입력 과다로 제외)  
+> 평가 일자: 2026-06-23
 
 | 모델 | parse_rate | verify_pass | chain_order | rank_exact | axis_mae | total_mae |
 |------|-----------|-------------|-------------|------------|----------|-----------|
-| Base (Qwen3.5-4B) | - | - | - | - | - | - |
-| SFT v9combined | - | - | - | - | - | - |
-| DPO v9combined | - | - | - | - | - | - |
+| Base (Qwen3.5-4B) | 88.0% | 4.5% | 34.1% | 0.363 | 2.949 | 2.134 |
+| **SFT v9combined** | **96.0%** | **66.7%** | **77.1%** | **0.682** | **0.800** | **0.826** |
+| DPO v9combined | 98.0% | 65.3% | 75.5% | 0.667 | 0.823 | 0.849 |
 
-> 결과 업데이트 예정 (eval 진행 중)
+### 주요 관찰
+- SFT v9combined: 구 v9 SFT(46.7%) 대비 verify_pass **+20.0pp**, chain_order **+23.8pp** 향상
+- DPO가 SFT보다 소폭 낮음 (parse_rate 제외) — chain_order_break/rank_score_mismatch 집중 DPO의 한계
+- 동일 패턴: v9 실험에서도 DPO ≤ SFT (45.7% vs 46.7%)
+- 원인 추정: overdue+urgent 태스크(R8) 및 EN 행이 DPO 학습 데이터에 미반영
 
 ---
 

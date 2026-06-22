@@ -166,11 +166,11 @@ Mac (Apple M-series MPS) 환경에서 Qwen3.5-4B LoRA SFT 3회 실험 결과.
 
 | 모델 | parse_rate | verify_pass | chain_order | rank_exact | axis_mae | total_mae |
 |------|-----------|-------------|-------------|------------|----------|-----------|
-| Base (Qwen3.5-4B) | - | - | - | - | - | - |
-| SFT v9combined | - | - | - | - | - | - |
-| DPO v9combined | - | - | - | - | - | - |
+| Base (Qwen3.5-4B) | 88.0% | 4.5% | 34.1% | 0.363 | 2.949 | 2.134 |
+| **SFT v9combined** | **96.0%** | **66.7%** | **77.1%** | **0.682** | **0.800** | **0.826** |
+| DPO v9combined | 98.0% | 65.3% | 75.5% | 0.667 | 0.823 | 0.849 |
 
-> 결과 업데이트 예정 (eval 진행 중 — `bts26ctuc`)
+> 평가 완료: 2026-06-23 | SFT: verify_pass +20pp vs 구 v9 | DPO ≈ SFT (동일 패턴)
 
 ---
 
