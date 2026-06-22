@@ -174,6 +174,30 @@ Mac (Apple M-series MPS) 환경에서 Qwen3.5-4B LoRA SFT 3회 실험 결과.
 
 ---
 
+## 실험 6 — v9p1 SFT (EN 증강 학습셋, 2,882행)
+
+- **wandb run**: `sft_q35_4b_v9p1` (vijsd5u2)
+- **디바이스**: RTX 3060 12GB (CUDA), int4 + LoRA
+- **LoRA**: r=16, alpha=32, dropout=0.05
+- **데이터셋**: `data/scheduler_v9p1_combined.parquet` (KR 1,358 + EN 1,524 = 2,882행; max_seq=3584로 599행 제외 → 실 사용 2,283행)
+- **schema_version**: v9 (JSON-in/JSON-out)
+- **에폭**: 2 | **배치**: 1 × grad_accum 16 | **lr**: 2.0e-5, cosine | **max_seq_length**: 3,584
+- **train_loss**: 3.256 | **VRAM peak**: 9.45GB
+- **체크포인트**: `outputs/sft_q35_4b_v9p1/`
+
+### v9p1 SFT 평가 결과 (n=50)
+
+| 모델 | parse_rate | verify_pass | chain_order | rank_exact | axis_mae | total_mae |
+|------|-----------|-------------|-------------|------------|----------|-----------|
+| SFT v9combined (1,993행) | 96.0% | 66.7% | 77.1% | 0.682 | 0.800 | 0.826 |
+| **SFT v9p1 (2,882행)** | **88.0%** | **45.5%** | **47.7%** | **0.612** | **0.585** | **0.570** |
+
+**결과**: axis_mae/total_mae 개선 (-27%), 구조 지표(verify_pass/chain_order/parse_rate) 퇴행  
+**원인**: EN4(889행) 데이터 품질 — chaining_detail 희박, JSON 포맷 일관성 미흡  
+**다음 조치**: EN4 데이터 품질 감사 및 정제 후 재학습 검토
+
+---
+
 ## 데이터셋 증강 계획 (v9.1)
 
 | Phase | 목표 | 방법 |

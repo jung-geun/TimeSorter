@@ -6,6 +6,30 @@
 
 ---
 
+## v9p1 (EN 증강 학습셋) — 평가셋 n=50
+
+> 평가셋: `data/scheduler_v9_eval.parquet` (KR 31 + EN 28 = 59행, 9행 입력 과다로 제외)  
+> 평가 일자: 2026-06-23
+
+| 모델 | parse_rate | verify_pass | chain_order | rank_exact | axis_mae | total_mae |
+|------|-----------|-------------|-------------|------------|----------|-----------|
+| Base (Qwen3.5-4B) | 88.0% | 4.5% | 34.1% | 0.363 | 2.949 | 2.134 |
+| **SFT v9combined** | **96.0%** | **66.7%** | **77.1%** | **0.682** | **0.800** | **0.826** |
+| DPO v9combined | 98.0% | 65.3% | 75.5% | 0.667 | 0.823 | 0.849 |
+| SFT v9p1 (2,882행) | 88.0% | 45.5% | 47.7% | 0.612 | 0.585 | 0.570 |
+
+### v9p1 주요 관찰 (퇴행 분석)
+- **axis_mae/total_mae 개선**: 0.585/0.570 (v9combined 0.800/0.826 대비 -27%)
+- **구조 지표 퇴행**: verify_pass -21pp, chain_order -29pp, parse_rate -8pp
+- **parse_rate 88% 회귀**: base 수준으로 하락 — EN4 데이터의 JSON 포맷 일관성 문제 추정
+- **원인 가설**:
+  1. EN4(889행) 데이터 품질: `verify_chosen_v9` 통과했으나 chain/reasoning 품질 저하
+  2. 학습셋 비율 변화: KR 47% → EN 53%, EN4 chaining_detail 희박 행 다수
+  3. 학습 손실 이상: train_loss 3.256 (v9combined 대비 높음) — EN4 응답 다양성 증가로 학습 수렴 어려움
+- **다음 조치**: EN4 데이터 품질 감사 → 저품질 행 제거 후 v9p1 재학습 또는 v9combined로 DPO 진행
+
+---
+
 ## v9 종합 학습셋 (v9combined) — 평가셋 n=50 (59행 중 입력 ≤1900 토큰 통과)
 
 > 평가셋: `data/scheduler_v9_eval.parquet` (KR 31 + EN 28 = 59행, 9행 입력 과다로 제외)  
@@ -17,7 +41,7 @@
 | **SFT v9combined** | **96.0%** | **66.7%** | **77.1%** | **0.682** | **0.800** | **0.826** |
 | DPO v9combined | 98.0% | 65.3% | 75.5% | 0.667 | 0.823 | 0.849 |
 
-### 주요 관찰
+### v9combined 주요 관찰
 - SFT v9combined: 구 v9 SFT(46.7%) 대비 verify_pass **+20.0pp**, chain_order **+23.8pp** 향상
 - DPO가 SFT보다 소폭 낮음 (parse_rate 제외) — chain_order_break/rank_score_mismatch 집중 DPO의 한계
 - 동일 패턴: v9 실험에서도 DPO ≤ SFT (45.7% vs 46.7%)
