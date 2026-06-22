@@ -7,6 +7,7 @@
   rank_score_mismatch: total_score 더 높은 태스크를 더 낮은 rank로(순위 역전)
   chain_order_break  : 체인 선행/후행 rank 뒤바꿈
   total_score_wrong  : total_score를 축 가중합과 불일치하게 변조
+  overdue_rank_drop  : overdue+긴급(urgency≥8) 태스크의 rank를 낮춰 R8 위반
 
 입력: data/scheduler_v9.parquet (prompt=입력JSON, chosen=출력JSON)
 출력: data/dpo_pairs_v9.parquet + data/hf_versioned/dpo/v9.parquet
@@ -103,6 +104,34 @@ def neg_total_score_wrong(resp, inp, rng):
     return r
 
 
+def _is_overdue_urgent(task: "S.ScheduledTask") -> bool:
+    """R8 위반 대상: urgency 높고 reasoning에 overdue 언급 (is_overdue 추정)."""
+    if task.scoring.urgency < 7.5:
+        return False
+    summary = (task.reasoning.summary or "").lower()
+    return ("overdue" in summary
+            or "deadline has passed" in summary
+            or "마감이 지났" in summary
+            or "마감 초과" in summary
+            or "즉시 처리" in summary)
+
+
+def neg_overdue_rank_drop(resp, inp, rng):
+    """R8 위반: overdue+긴급 태스크의 rank를 비긴급 태스크보다 낮게 → 모델이 '마감 초과=낮은 순위'로 잘못 학습하는 패턴."""
+    r = copy.deepcopy(resp)
+    overdue = [s for s in r.scheduled_tasks if _is_overdue_urgent(s)]
+    normal = [s for s in r.scheduled_tasks if not _is_overdue_urgent(s)
+              and s.scoring.urgency < 6.0]
+    if not overdue or not normal:
+        return None
+    od = rng.choice(overdue)
+    nm = rng.choice(normal)
+    if od.priority_rank >= nm.priority_rank:
+        return None  # overdue가 이미 낮은 순위(높은 rank 숫자)면 위반 생성 불가
+    od.priority_rank, nm.priority_rank = nm.priority_rank, od.priority_rank
+    return r
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sft", default="data/scheduler_v9.parquet")
@@ -127,6 +156,7 @@ def main() -> None:
             ("deadline_miss", lambda: neg_deadline_miss(resp, inp, rng)),
             ("rank_score_mismatch", lambda: neg_rank_score_mismatch(resp, inp, rng)),
             ("total_score_wrong", lambda: neg_total_score_wrong(resp, inp, rng)),
+            ("overdue_rank_drop", lambda: neg_overdue_rank_drop(resp, inp, rng)),
         ]
         if chain_pairs:
             makers.append(("chain_order_break",

@@ -46,6 +46,34 @@ def has_generic_title(titles: dict, pat) -> bool:
     return any(pat.match(t.get("title", "").strip()) for t in titles.values())
 
 
+# placeholder/템플릿 memo — LLM 미보강(게으른 haiku) 흔적. 이런 행은 탈락(품질).
+_PLACEHOLDER_MEMO = re.compile(
+    r"^\s*(complete (this|the) task\b|complete step\s*\d|work on .*-\s*step\s*\d|"
+    r"begin work on\b|next phase of\b|continue working on\b|"
+    r"작업\s*진행|할\s*일\s*처리|이\s*작업\s*(수행|완료)|단계\s*\d+\s*진행)",
+    re.IGNORECASE)
+
+
+def _strip_nonword(s: str) -> str:
+    return re.sub(r"[^\w]", "", s.lower())
+
+
+def has_placeholder_content(titles: dict) -> bool:
+    """memo가 placeholder 템플릿이거나 제목을 그대로 반복하면 True (LLM 미보강 결함)."""
+    for t in titles.values():
+        memo = (t.get("memo") or "").strip()
+        title = (t.get("title") or "").strip()
+        if not memo:
+            continue
+        if _PLACEHOLDER_MEMO.match(memo):
+            return True
+        # "Complete <title>" / "<title> 반복" 류 제목 그대로 베끼기
+        mw, tw = _strip_nonword(memo), _strip_nonword(title)
+        if tw and (mw == tw or mw == "complete" + tw):
+            return True
+    return False
+
+
 def load_scaffold(scaffold_dir: str = "outputs/v9/build/scaffold") -> dict[int, dict]:
     out = {}
     for f in sorted(glob.glob(f"{scaffold_dir}/batch_*.json")):
@@ -57,13 +85,17 @@ def load_scaffold(scaffold_dir: str = "outputs/v9/build/scaffold") -> dict[int, 
     return out
 
 
-def load_llm(path: str) -> tuple[dict, dict, dict]:
+def load_llm(path: str, lang: str | None = None) -> tuple[dict, dict, dict]:
+    """Load LLM fill results. Pass lang='ko'/'en' when file mixes both languages
+    (KR and EN scaffolds share row_id 0-N, so unfiltered loads cause collisions)."""
     raw = Path(path).read_text()
     arr = json.loads(raw)
     if isinstance(arr, str):
         arr = json.loads(arr)
     haiku, sonnet, opus = {}, {}, {}
     for batch in arr:
+        if lang is not None and batch.get("lang") != lang:
+            continue
         for h in batch.get("haiku") or []:
             haiku[h["row_id"]] = {t["task_id"]: t for t in h["tasks"]}
         for s in batch.get("sonnet") or []:
@@ -113,7 +145,7 @@ def main() -> None:
     version = "v9_en" if args.lang == "en" else "v9"
     src_tag = "v9en" if args.lang == "en" else "v9"
     scaffold = load_scaffold(args.scaffold_dir)
-    titles, reasons, opus = load_llm(args.llm)
+    titles, reasons, opus = load_llm(args.llm, lang=args.lang)
 
     rows, stats = [], {"verify_fail": 0, "opus_fail": 0, "low_realism": 0,
                        "no_llm": 0, "pydantic": 0, "generic": 0, "dup_row": 0}
@@ -125,6 +157,10 @@ def main() -> None:
             continue
         if has_generic_title(titles[rid], pat):
             stats["generic"] += 1
+            continue
+        if has_placeholder_content(titles[rid]):
+            stats.setdefault("placeholder", 0)
+            stats["placeholder"] += 1
             continue
         try:
             inp, out, errors = assemble(scaf, titles[rid], reasons[rid])

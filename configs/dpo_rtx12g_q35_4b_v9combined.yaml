@@ -1,0 +1,36 @@
+# DPO v9combined (Qwen3.5-4B) — sft_q35_4b_v9combined 베이스, RTX 12GB, liger fused-CE logp
+# 약점(체인 순서) 교정: dpo_pairs_v9의 chain_order_break·rank_score_mismatch 등 위반 negative.
+# max_length 3584 (SFT와 동일한 seq 제한)
+model_name: Qwen/Qwen3.5-4B
+sft_adapter: outputs/sft_q35_4b_v9combined
+# 집중셋: 약점(체인순서·순위) 타깃 — chain_order_break + rank_score_mismatch
+dataset: data/dpo_pairs_v9_focus.parquet
+output_dir: outputs/dpo_q35_4b_v9combined
+max_samples: 2000
+max_prompt_len: 2000
+schema_version: "v9"
+wandb_run_name: dpo_q35_4b_v9combined
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  num_train_epochs: 1
+  max_length: 3584
+  max_prompt_length: 2000
+  precompute_ref_log_probs: true
+  precompute_ref_batch_size: 1
+  beta: 0.1
+  learning_rate: 5.0e-7
+  gradient_checkpointing: true
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  save_strategy: "epoch"
+  save_total_limit: 1
+  optim: "adamw_8bit"
+  dataloader_num_workers: 2
