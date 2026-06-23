@@ -130,6 +130,19 @@
 - **assemble**: 1,000 후보 → 889행 통과 (verify_fail 48, placeholder 55, no_llm 8)
 - **combined**: `scheduler_v9_combined.parquet`(1,993) + `scheduler_v9_en4.parquet`(889) = **2,882행**
 - **EN 비율**: 635 → 1,524 (31.9% → **52.9%**) ✅
+- **⚠ SFT 결과 퇴행**: v9p1 SFT verify_pass 45.5% (v9combined 66.7% 대비 -21pp) → EN4 품질 문제
+
+### Phase B 감사 실적 (2026-06-23) — agy LLM 감사
+- **도구**: agy (Google Antigravity) — Gemini 3.5 Flash → Claude Sonnet 4.6 (쿼터 소진으로 전환)
+
+| 데이터셋 | 감사 완료 | ok | warn | reject | summary_quality | persona_fit | 결정 |
+|---------|----------|----|------|--------|----------------|-------------|------|
+| EN4 (889행) | 446 (50%) | 7 (1.6%) | 212 (47%) | 227 (51%) | 1.93 | 2.22 | **전체 제외** |
+| v9combined (1993행) | 433 (22%) | 70 (16%) | 237 (55%) | 126 (29%) | 2.92 | 2.76 | **180행 prune** |
+
+- **EN4 품질 불량 원인**: haiku fill 시 persona 컨텍스트 손실 → 태스크-페르소나 불일치, summary 중간 잘림 (91% 미달)
+- **v9combined_audited**: 1,993 → **1,813행** (`data/scheduler_v9_combined_audited.parquet`)
+- **다음 Phase 2**: EN 재생성 시 persona 명시 전달 + opus 품질 게이트 적용
 
 ---
 
