@@ -1,0 +1,33 @@
+# SFT v9 (Qwen3.5-2B) — 소형 모델 학습 검증용. 4B와 동일 파이프라인, model만 교체.
+# 같은 qwen3_5 아키텍처·토크나이저(248K)·enable_thinking=False 템플릿 → drop-in.
+# liger fused-linear-CE로 긴 JSON 시퀀스 수용(2B는 VRAM 여유 큼).
+model_name: Qwen/Qwen3.5-2B
+dataset: data/scheduler_v9.parquet
+output_dir: outputs/sft_q35_2b_v9
+max_samples: null
+schema_version: "v9"
+prompt_completion: true
+max_seq_length: 4096
+wandb_run_name: sft_q35_2b_v9
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  num_train_epochs: 2
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  packing: false
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 1
+  save_strategy: "epoch"
+  report_to: "none"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

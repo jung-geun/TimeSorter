@@ -1,0 +1,34 @@
+# SFT v9.1 (Qwen3.5-4B) — v9combined + EN3 augmentation (Phase 1)
+# EN 증강: scheduler_v9_combined.parquet + scheduler_v9_en4.parquet → v9p1_combined.parquet
+# 목표: EN 비율 50%+ (KR 1358 + EN 1200+)
+# max_seq 3584 유지 (OOM 방지)
+model_name: Qwen/Qwen3.5-4B
+dataset: data/scheduler_v9p1_combined.parquet
+output_dir: outputs/sft_q35_4b_v9p1
+max_samples: null
+schema_version: "v9"
+prompt_completion: true
+max_seq_length: 3584
+wandb_run_name: sft_q35_4b_v9p1
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  num_train_epochs: 2
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  packing: false
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 1
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

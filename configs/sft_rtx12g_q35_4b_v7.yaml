@@ -1,0 +1,33 @@
+# SFT v7 (Qwen3.5-4B) — v7 자립형 데이터셋 (15,282행) + 의존성 체인 보강 968행 포함
+# 베이스: Qwen/Qwen3.5-4B (sft_q35_4b_v4와 동일 아키텍처·하이퍼파라미터)
+model_name: Qwen/Qwen3.5-4B
+dataset: data/hf_versioned/sft/v7_selfcontained.parquet
+output_dir: outputs/sft_q35_4b_v7
+max_samples: null
+ko_ultrafeedback_n: 0
+max_seq_length: 1536
+schema_version: "v3"
+prompt_completion: true
+wandb_run_name: sft_q35_4b_v7
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  num_train_epochs: 3
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  packing: false
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

@@ -129,7 +129,7 @@ def main():
     meta = json.loads((SRC / "VERSIONS.json").read_text())
 
     for kind, repo in REPOS.items():
-        files = sorted((SRC / kind).glob("v*.parquet"))
+        files = sorted(f for f in (SRC / kind).glob("v*.parquet") if "_selfcontained" not in f.stem)
         present = [f.stem for f in files]
         api.create_repo(repo, repo_type="dataset", private=args.private, exist_ok=True)
         if not args.card_only:

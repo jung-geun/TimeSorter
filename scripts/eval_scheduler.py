@@ -64,6 +64,7 @@ def main() -> None:
     parser.add_argument("--rerank-mode", default="full", choices=["full", "guard"],
                         help="full=가중합 전면 재정렬, guard=지난 일정만 최하위 강등")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--max-tokens", type=int, default=2048)
     parser.add_argument("--out", default=None, help="상세 결과 JSON 저장 경로")
     args = parser.parse_args()
 
@@ -91,7 +92,7 @@ def main() -> None:
             model=args.model,
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": str(row["prompt"])}],
-            max_tokens=2048, temperature=0.0,
+            max_tokens=args.max_tokens, temperature=0.0,
             extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
         raw = (resp.choices[0].message.content or "").strip()

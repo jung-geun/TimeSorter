@@ -19,11 +19,100 @@
 4) 점심 약속         [긴급2·중요2·의존1·시간3] — 유연 조정 가능
 ```
 
-출력은 항상 4축 점수 JSON (`tasks`/`priority_order`/`scores`/`refusal_reason`) — 앱이 바로 파싱·렌더링.
+> 위 1–5 점수 예시는 **초기(v3) 자연어 포맷**입니다. 현행 앱 연동 포맷은 아래 **v9 JSON 입출력**으로 전면 개편되었습니다.
 
 ---
 
-## 실험 결과
+## 데이터셋 입출력 형식 (v9 — 현행 앱 연동 포맷)
+
+v1~v8의 자연어/4축(1–5) 스키마를 **JSON-in / JSON-out**으로 전면 개편한 현행 포맷. 앱이 모델 출력을 그대로 파싱해 캘린더에 렌더링한다.
+
+### 입력 `ScheduleInput`
+
+```json
+{
+  "current_time": "2026-03-21T08:00:00+09:00",
+  "user_persona": {
+    "occupations": ["마케팅 매니저"],
+    "detailed_status": "신제품 출시를 앞두고 캠페인 성과를 관리하는 중...",
+    "age": 34, "gender": "female",
+    "location": {"country": "South Korea", "city": "서울 강남구"},
+    "bio": "데이터 기반 의사결정을 선호하는 실무형 리더...",
+    "availability": "09:00-18:00"
+  },
+  "tasks": [
+    {"task_id": "task_001", "title": "분기 실적 보고서 작성", "memo": "미제출 시 위약금 발생",
+     "source": "email", "deadline": "2026-03-21T15:00:00+09:00",
+     "estimated_duration_minutes": 90}
+  ]
+}
+```
+
+| 필드 | 설명 |
+|------|------|
+| `current_time` | 현재 시각 (ISO8601, 타임존 포함) |
+| `user_persona` | occupations·detailed_status·age·gender·location(country/city)·bio·availability(가용 시간대) |
+| `tasks[]` | task_id · title · memo · source · **deadline**(없으면 `null`) · **estimated_duration_minutes** |
+
+### 출력 `ScheduleResponseV9`
+
+```json
+{
+  "scheduled_tasks": [
+    {
+      "task_id": "task_001",
+      "title": "분기 실적 보고서 작성",
+      "priority_rank": 1,
+      "scoring": {"deadline_proximity": 9.0, "task_importance": 9.0,
+                  "task_chaining": 2.0, "urgency": 9.5, "total_score": 8.1},
+      "reasoning": {"summary": "마감 7시간 전이고 위약금 리스크가 있어 최우선...", "chaining_detail": ""},
+      "recommended_schedule": {"start_time": "2026-03-21T08:00:00+09:00",
+                               "end_time": "2026-03-21T09:30:00+09:00"}
+    }
+  ]
+}
+```
+
+| 필드 | 설명 |
+|------|------|
+| `priority_rank` | 실행 순서 (1..N 순열) |
+| `scoring` | 4축 **0–10 실수** + `total_score`(가중 종합) |
+| `reasoning` | `summary`(점수·순위 근거) + `chaining_detail`(체인일 때만, 독립이면 `""`) |
+| `recommended_schedule` | 가용 시간대 내 **비중복 시간블록** (start/end, ISO8601) |
+
+**채점 4축 (0–10)**: `deadline_proximity`(마감 임박도) · `task_importance`(목표 영향·리스크 시 가산) · `task_chaining`(후속 작업 블로킹) · `urgency`(즉시 착수 필요도)
+
+**total_score** = `0.30·urgency + 0.25·deadline_proximity + 0.30·task_importance + 0.15·task_chaining` (평가 시 4축에서 결정적 재계산 — 모델은 4축만 정확하면 됨)
+
+**규칙**: `priority_rank`는 total_score 내림차순(단, **체인 선행이 후행보다 먼저**, 지난 고정 일정은 최하위) · 시간블록은 `current_time` 이후·가용시간 내·서로 겹치지 않게·가능하면 각 task의 `deadline` 전에 완료.
+
+> 데이터셋: HF 공개 [pieroot/timesorter-scheduler-v9-ko](https://huggingface.co/datasets/pieroot/timesorter-scheduler-v9-ko) (SFT 1,542 / DPO 7,438). 구성·생성·검수 상세는 [docs/DATASETS.md](docs/DATASETS.md). **다국어 확장**(EN-US 등 Nemotron 국가별 페르소나 기반) 진행 중.
+
+---
+
+## v9 모델 성능 (4B / 2B, n=50)
+
+신 스키마(v9) 자동 채점 — `verify_chosen_v9`(구조 규칙 무위반) + gold 대비 점수 오차(낮을수록↓). 동일 입력·greedy 디코딩, KR 데이터.
+
+| 지표 | 4B base | 4B SFT | 4B DPO | 2B base | 2B SFT | 2B DPO |
+|---|---|---|---|---|---|---|
+| parse_rate | 0.82 | 0.90 | 0.92 | 0.20 | 0.92 | 0.94 |
+| verify_pass | 0.10 | **0.47** | 0.46 | 0.00 | 0.09 | 0.09 |
+| chain_order | 0.29 | 0.53 | 0.52 | 0.30 | 0.30 | 0.34 |
+| sched_feasible | 0.98 | 1.00 | 1.00 | 0.90 | 0.94 | 0.96 |
+| deadline_met | 0.93 | 1.00 | 1.00 | 0.50 | 0.91 | 0.94 |
+| rank_exact | 0.40 | 0.59 | 0.59 | 0.29 | 0.39 | 0.38 |
+| axis_mae↓ | 2.70 | 0.67 | 0.74 | 3.20 | 1.76 | 1.75 |
+| total_mae↓ | 1.95 | 0.66 | 0.72 | 2.14 | 1.63 | 1.60 |
+
+- **SFT가 1차 효과**: base→SFT에서 규칙 통과·점수 정확도가 급상승. 2B는 parse 0.20→0.92로 **형식부터** 학습, 4B는 base가 이미 형식을 알아 규칙·점수에서 향상.
+- **DPO ≈ SFT**: 4B·2B 모두 DPO가 SFT 대비 거의 불변(chain_order만 미세 변동). **선호학습(DPO)으로 체인 능력은 안 옮겨진다**는 프로젝트 일관 실증(v7 SFT-only 결정과 동일 결).
+- **2B 천장 < 4B**: 2B는 유효 JSON은 잘 뽑지만(parse 0.94) verify_pass 0.09로 4B(0.47)의 1/5 — 모든 규칙 동시충족은 모델 용량에 의존.
+- **다국어(EN-US) 파일럿**: 238행 SFT만으로 chain_order 0.61(KR 4B SFT 0.53 상회) — Track B 파이프라인 작동 입증. ([docs/DATASETS.md](docs/DATASETS.md) v9 참고)
+
+---
+
+## 실험 결과 (구 v3 스키마)
 
 held-out 150 시나리오를 골격 규칙(`verify_chosen`)으로 $0·결정론 자동 채점. (지난 일정 순위·당일 시각 순서·체인 연속성·리스크 importance·무마감 1위)
 
@@ -108,7 +197,7 @@ bash scripts/validate_model.sh outputs/dpo_q35_4b_v5
 
 | 문서 | 내용 |
 |------|------|
-| [docs/DATASETS.md](docs/DATASETS.md) | 데이터셋 v1~v6 구성·차이·생성 방법 |
+| [docs/DATASETS.md](docs/DATASETS.md) | 데이터셋 v1~v9 구성·차이·생성 방법 (v9 신 스키마 포함) |
 | [VERSIONING.md](VERSIONING.md) | 버전별 증분 규칙 · HuggingFace 사용법 |
 | [docs/TRAINING.md](docs/TRAINING.md) | 학습 설정·하드웨어·검증·모듈 구조 |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | 상세 검증 분석·학습 지표 이력 |

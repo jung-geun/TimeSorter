@@ -1,0 +1,33 @@
+# SFT v9 (Qwen3.5-4B) — JSON-in/out 신 스키마, RTX 3080 Ti 12GB
+# 긴 시퀀스(p50 3149·p90 4059) → MemEfficientSFTTrainer(liger fused-linear-CE)로 학습.
+# max_seq 4096 = 데이터 90.7% 수용(체인 보존), 초과분은 truncation 대신 제외.
+model_name: Qwen/Qwen3.5-4B
+dataset: data/scheduler_v9.parquet
+output_dir: outputs/sft_q35_4b_v9
+max_samples: null
+schema_version: "v9"
+prompt_completion: true
+max_seq_length: 4096
+wandb_run_name: sft_q35_4b_v9
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  num_train_epochs: 2
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  packing: false
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 1
+  save_strategy: "epoch"
+  report_to: "wandb"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

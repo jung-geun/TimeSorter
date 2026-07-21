@@ -1,0 +1,34 @@
+# SFT v9 EN-US 파일럿 (Qwen3.5-4B) — 다국어 확장 end-to-end 증명.
+# 238행 소량이라 epochs↑(4). schema_version=v9_en → 영어 시스템 프롬프트.
+# liger fused-linear-CE로 4096 시퀀스 12GB 학습(KR v9와 동일 트레이너).
+model_name: Qwen/Qwen3.5-4B
+dataset: data/scheduler_v9_en.parquet
+output_dir: outputs/sft_q35_4b_v9_en
+max_samples: null
+schema_version: "v9_en"
+prompt_completion: true
+max_seq_length: 4096
+wandb_run_name: sft_q35_4b_v9_en
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  use_4bit: true
+
+training_args:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  num_train_epochs: 4
+  learning_rate: 2.0e-5
+  gradient_checkpointing: true
+  packing: false
+  warmup_ratio: 0.05
+  lr_scheduler_type: "cosine"
+  logging_steps: 1
+  save_strategy: "epoch"
+  save_total_limit: 1
+  report_to: "none"
+  remove_unused_columns: false
+  dataloader_num_workers: 2
+  optim: "adamw_8bit"

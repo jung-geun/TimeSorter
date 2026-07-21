@@ -26,6 +26,8 @@ def _apply_system_to_dpo(
     messages list 형식으로 변환한다.
     """
     system_tmpl = system_prompt_for(schema_version)
+    # v9(Qwen3.5 reasoning)는 닫힌 think 블록으로 직접 출력 학습 — SFT와 일치 필수.
+    tmpl_kwargs = {"enable_thinking": False} if schema_version == "v9" else {}
 
     def _transform(row: dict) -> dict:
         persona = row.get(persona_col, "직장인")
@@ -38,7 +40,7 @@ def _apply_system_to_dpo(
             {"role": "user", "content": str(row["prompt"])},
         ]
         prompt_text = tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
+            messages, tokenize=False, add_generation_prompt=True, **tmpl_kwargs
         )
         return {
             "prompt": prompt_text,
